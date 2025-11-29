@@ -186,7 +186,7 @@ CREATE TRIGGER update_complaints_updated_at
   BEFORE UPDATE ON public.complaints
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
--- Create function to handle new user signup
+-- AUTOMATIC ADMIN ASSIGNMENT LOGIC
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -195,17 +195,32 @@ SET search_path = public
 AS $$
 DECLARE
   assigned_role app_role;
+  assigned_branch text;
 BEGIN
-  -- Automatically assign 'admin' role to specific email addresses
-  IF NEW.email = 'admin.kochi@brototype.com' 
-     OR NEW.email = 'admin.blr@brototype.com'
-     OR NEW.email = 'admin.clt@brototype.com'
-     OR NEW.email = 'admin.chn@brototype.com'
-     OR NEW.email = 'admin.cbe@brototype.com'
-     OR NEW.email = 'admin.tvm@brototype.com' THEN
+  -- 1. SECURITY CHECK: If email matches an admin, force role to 'admin'
+  IF NEW.email IN (
+    'admin.kochi@brototype.com',
+    'admin.blr@brototype.com',
+    'admin.clt@brototype.com',
+    'admin.chn@brototype.com',
+    'admin.cbe@brototype.com',
+    'admin.tvm@brototype.com'
+  ) THEN
     assigned_role := 'admin';
   ELSE
-    assigned_role := COALESCE((NEW.raw_user_meta_data ->> 'role')::app_role, 'student');
+    assigned_role := 'student';
+  END IF;
+
+  -- 2. Force correct branch for admins (ignores what they selected in UI)
+  IF NEW.email = 'admin.kochi@brototype.com' THEN assigned_branch := 'Kochi';
+  ELSIF NEW.email = 'admin.blr@brototype.com' THEN assigned_branch := 'Bengaluru';
+  ELSIF NEW.email = 'admin.clt@brototype.com' THEN assigned_branch := 'Calicut';
+  ELSIF NEW.email = 'admin.chn@brototype.com' THEN assigned_branch := 'Chennai';
+  ELSIF NEW.email = 'admin.cbe@brototype.com' THEN assigned_branch := 'Coimbatore';
+  ELSIF NEW.email = 'admin.tvm@brototype.com' THEN assigned_branch := 'Trivandrum';
+  ELSE
+    -- For students, use the branch they selected
+    assigned_branch := COALESCE(NEW.raw_user_meta_data ->> 'branch', 'Kochi');
   END IF;
 
   INSERT INTO public.profiles (id, email, full_name, branch, role)
@@ -213,7 +228,7 @@ BEGIN
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data ->> 'full_name', 'User'),
-    COALESCE(NEW.raw_user_meta_data ->> 'branch', 'Kochi'),
+    assigned_branch,
     assigned_role
   );
   RETURN NEW;
