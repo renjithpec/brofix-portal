@@ -101,7 +101,6 @@ const Settings = () => {
     const fileExt = file.name.split('.').pop();
     const filePath = `${user.id}/avatar.${fileExt}`;
 
-    // 1. Upload Image
     const { error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(filePath, file, { upsert: true });
@@ -116,15 +115,12 @@ const Settings = () => {
       return;
     }
 
-    // 2. Get Public URL
     const { data: { publicUrl } } = supabase.storage
       .from('avatars')
       .getPublicUrl(filePath);
     
-    // Cache busting to ensure image updates immediately
     const publicUrlWithCache = `${publicUrl}?t=${new Date().getTime()}`;
 
-    // 3. Update Profile
     const { error: updateError } = await supabase
       .from('profiles')
       .update({ avatar_url: publicUrlWithCache })
@@ -141,8 +137,7 @@ const Settings = () => {
         title: 'Success',
         description: 'Avatar updated successfully.'
       });
-      // Reload window to refresh avatar in header
-      window.location.reload();
+      setTimeout(() => window.location.reload(), 1000);
     }
     setAvatarLoading(false);
   };
@@ -226,7 +221,7 @@ const Settings = () => {
                   </div>
                 </SelectTrigger>
                 <SelectContent className="bg-card border-border">
-                  {BRANCHES.map(b => (
+                  {BRANCHES.map((b) => (
                     <SelectItem key={b} value={b}>{b}</SelectItem>
                   ))}
                 </SelectContent>
@@ -271,7 +266,6 @@ const Settings = () => {
              </div>
            </div>
            <div className="flex justify-end pt-2">
-             {/* Changed: Removed variant="secondary" to make it WHITE */}
              <Button type="submit" disabled={loading || !newPassword}>
                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                Update Password
