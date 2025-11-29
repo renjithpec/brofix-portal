@@ -13,7 +13,7 @@ const Settings = () => {
   const [loading, setLoading] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
   
-  // Initialize with empty strings to prevent uncontrolled/controlled warning
+  // Initialize with empty strings
   const [fullName, setFullName] = useState('');
   const [branch, setBranch] = useState<Branch | string>('');
   
@@ -54,7 +54,7 @@ const Settings = () => {
     } else {
       toast({
         title: 'Success',
-        description: 'Profile updated successfully. Refresh to see changes.'
+        description: 'Profile updated successfully.'
       });
     }
     setLoading(false);
@@ -121,7 +121,7 @@ const Settings = () => {
       .from('avatars')
       .getPublicUrl(filePath);
     
-    // Cache busting to ensure image updates immediately in UI
+    // Cache busting to ensure image updates immediately
     const publicUrlWithCache = `${publicUrl}?t=${new Date().getTime()}`;
 
     // 3. Update Profile
@@ -139,10 +139,10 @@ const Settings = () => {
     } else {
       toast({
         title: 'Success',
-        description: 'Avatar updated successfully. Refreshing...'
+        description: 'Avatar updated successfully.'
       });
-      // Reload to reflect changes everywhere
-      setTimeout(() => window.location.reload(), 1000);
+      // Reload window to refresh avatar in header
+      window.location.reload();
     }
     setAvatarLoading(false);
   };
@@ -226,7 +226,7 @@ const Settings = () => {
                   </div>
                 </SelectTrigger>
                 <SelectContent className="bg-card border-border">
-                  {BRANCHES.map((b) => (
+                  {BRANCHES.map(b => (
                     <SelectItem key={b} value={b}>{b}</SelectItem>
                   ))}
                 </SelectContent>
@@ -271,7 +271,7 @@ const Settings = () => {
              </div>
            </div>
            <div className="flex justify-end pt-2">
-             {/* Button changed to default variant (White) */}
+             {/* Changed: Removed variant="secondary" to make it WHITE */}
              <Button type="submit" disabled={loading || !newPassword}>
                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                Update Password
