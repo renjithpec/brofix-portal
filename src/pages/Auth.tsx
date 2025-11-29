@@ -41,14 +41,17 @@ const Auth = () => {
             setIsSignup(false);
           }} />
 
-          {activeTab === 'student' ? (
-            isSignup ? (
-              <SignupForm onToggleLogin={() => setIsSignup(false)} />
-            ) : (
-              <LoginForm isAdmin={false} onToggleSignup={() => setIsSignup(true)} />
-            )
+          {/* Logic updated to allow signup for BOTH students and admins */}
+          {isSignup ? (
+            <SignupForm 
+              onToggleLogin={() => setIsSignup(false)} 
+              isAdmin={activeTab === 'admin'} // Pass true if on Admin tab
+            />
           ) : (
-            <LoginForm isAdmin={true} />
+            <LoginForm 
+              isAdmin={activeTab === 'admin'} 
+              onToggleSignup={() => setIsSignup(true)} 
+            />
           )}
         </div>
       </div>
