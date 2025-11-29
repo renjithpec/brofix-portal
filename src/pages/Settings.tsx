@@ -11,7 +11,10 @@ import { BRANCHES, Branch } from '@/lib/constants';
 const Settings = () => {
   const { user, profile } = useAuth();
   const [loading, setLoading] = useState(false);
+  
+  // Avatar State
   const [avatarLoading, setAvatarLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   
   // Profile State
   const [fullName, setFullName] = useState('');
@@ -93,7 +96,7 @@ const Settings = () => {
 
     setLoading(true);
 
-    // 1. Verify Current Password first
+    // 1. Verify Current Password
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: user?.email || '',
       password: currentPassword,
@@ -125,7 +128,6 @@ const Settings = () => {
         title: 'Success',
         description: 'Password updated successfully.'
       });
-      // Reset fields
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -138,6 +140,13 @@ const Settings = () => {
     if (!file || !user) return;
 
     setAvatarLoading(true);
+    setUploadProgress(0);
+    
+    // Simulate progress bar
+    const interval = setInterval(() => {
+      setUploadProgress((prev) => (prev >= 90 ? 90 : prev + 10));
+    }, 100);
+
     const fileExt = file.name.split('.').pop();
     const filePath = `${user.id}/avatar.${fileExt}`;
 
@@ -146,14 +155,18 @@ const Settings = () => {
       .upload(filePath, file, { upsert: true });
 
     if (uploadError) {
+      clearInterval(interval);
+      setAvatarLoading(false);
       toast({
         title: 'Error',
         description: 'Failed to upload avatar.',
         variant: 'destructive'
       });
-      setAvatarLoading(false);
       return;
     }
+
+    clearInterval(interval);
+    setUploadProgress(100);
 
     const { data: { publicUrl } } = supabase.storage
       .from('avatars')
@@ -177,7 +190,7 @@ const Settings = () => {
         title: 'Success',
         description: 'Avatar updated successfully.'
       });
-      setTimeout(() => window.location.reload(), 1000);
+      setTimeout(() => window.location.reload(), 500);
     }
     setAvatarLoading(false);
   };
@@ -195,20 +208,29 @@ const Settings = () => {
           className="relative group cursor-pointer" 
           onClick={() => !avatarLoading && fileInputRef.current?.click()}
         >
-          <div className="w-20 h-20 rounded-full bg-secondary border-2 border-border overflow-hidden relative">
+          <div className="w-24 h-24 rounded-full bg-secondary border-2 border-border overflow-hidden relative">
             {avatarLoading ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                 <Loader2 className="animate-spin text-white" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10">
+                 <div className="w-16 h-1.5 bg-zinc-700 rounded-full overflow-hidden mb-2">
+                    <div 
+                      className="h-full bg-white transition-all duration-200 ease-out" 
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                 </div>
+                 <span className="text-[10px] text-white font-medium">{uploadProgress}%</span>
               </div>
             ) : profile?.avatar_url ? (
                <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
             ) : (
-               <User className="w-full h-full p-4 text-muted-foreground" />
+               <User className="w-full h-full p-6 text-muted-foreground" />
             )}
           </div>
-          <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-            <Camera className="text-white w-6 h-6" />
-          </div>
+          
+          {!avatarLoading && (
+            <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <Camera className="text-white w-8 h-8" />
+            </div>
+          )}
         </div>
         <div>
           <h3 className="font-medium text-foreground">Profile Photo</h3>
@@ -284,13 +306,14 @@ const Settings = () => {
         </h3>
         <form onSubmit={handlePasswordUpdate} className="space-y-4">
            
-           {/* Current Password */}
+           {/* Current Password Field */}
            <div>
               <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Current Password</label>
               <Input 
                 type="password" 
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Enter current password"
                 className="bg-secondary/50 border-border" 
               />
            </div>
@@ -304,6 +327,7 @@ const Settings = () => {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   minLength={6}
+                  placeholder="Enter new password"
                   className="bg-secondary/50 border-border" 
                 />
              </div>
@@ -314,6 +338,7 @@ const Settings = () => {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   minLength={6}
+                  placeholder="Confirm new password"
                   className="bg-secondary/50 border-border" 
                 />
              </div>
