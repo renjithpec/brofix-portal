@@ -8,9 +8,10 @@ import { BRANCHES } from '@/lib/constants';
 
 interface SignupFormProps {
   onToggleLogin: () => void;
+  isAdmin?: boolean; // New prop to indicate if we are creating an admin
 }
 
-const SignupForm = ({ onToggleLogin }: SignupFormProps) => {
+const SignupForm = ({ onToggleLogin, isAdmin = false }: SignupFormProps) => {
   const [fullName, setFullName] = useState('');
   const [branch, setBranch] = useState('');
   const [email, setEmail] = useState('');
@@ -33,7 +34,9 @@ const SignupForm = ({ onToggleLogin }: SignupFormProps) => {
 
     setLoading(true);
 
-    const { error } = await signUp(email, password, fullName, branch);
+    // Pass 'admin' role if isAdmin is true, otherwise 'student'
+    const role = isAdmin ? 'admin' : 'student';
+    const { error } = await signUp(email, password, fullName, branch, role);
 
     if (error) {
       let message = error.message;
@@ -57,7 +60,9 @@ const SignupForm = ({ onToggleLogin }: SignupFormProps) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      <h2 className="text-2xl font-bold text-foreground">Create Account</h2>
+      <h2 className="text-2xl font-bold text-foreground">
+        {isAdmin ? 'Create Admin Account' : 'Create Student Account'}
+      </h2>
 
       <div className="space-y-4">
         <div>
@@ -105,7 +110,7 @@ const SignupForm = ({ onToggleLogin }: SignupFormProps) => {
             <Mail />
             <input
               type="email"
-              placeholder="student@brototype.com"
+              placeholder={isAdmin ? "admin@brototype.com" : "student@brototype.com"}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
