@@ -38,8 +38,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .single();
     
     if (!error && data) {
-      // --- FORCE ADMIN ROLE FIX ---
-      // This ensures that even if the DB says "student", the code treats you as Admin
+      // --- FORCE ADMIN ROLE FIX (The "God Mode" Patch) ---
+      // This forces your specific email to ALWAYS be an Admin, fixing the "Student" bug.
       const forcedAdminEmails = [
         'admin.kochi@brototype.com',
         'admin.blr@brototype.com',
@@ -49,14 +49,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         'admin.tvm@brototype.com'
       ];
 
-      const finalProfile = data as Profile;
+      // Create a copy of the profile data
+      const finalProfile = { ...data } as Profile;
       
-      if (forcedAdminEmails.includes(data.email)) {
+      if (data.email && forcedAdminEmails.includes(data.email)) {
+        console.log("Force-promoting user to Admin:", data.email); // Debug log
         finalProfile.role = 'admin';
-        // Also force the correct branch just in case
-        if (data.email === 'admin.kochi@brototype.com') finalProfile.branch = 'Kochi';
+        
+        // Force correct branch for Super Admin
+        if (data.email === 'admin.kochi@brototype.com') {
+           finalProfile.branch = 'Kochi';
+        }
       }
-      // -----------------------------
+      // ---------------------------------------------------
 
       setProfile(finalProfile);
     }
@@ -68,9 +73,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
       
       if (session?.user) {
+        // Small delay to ensure DB trigger has finished writing the profile
         setTimeout(() => {
           fetchProfile(session.user.id);
-        }, 0);
+        }, 500);
       } else {
         setProfile(null);
       }
