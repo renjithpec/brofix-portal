@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutGrid, History, BarChart3, Users, Bell, User, LogOut } from 'lucide-react';
+import { LayoutGrid, History, BarChart3, Users, Bell, User, LogOut, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Logo from '@/components/Logo';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import NotificationBell from '@/components/notifications/NotificationBell';
 
@@ -67,16 +68,27 @@ const Header = () => {
                   <p className="text-sm font-medium text-foreground">{profile?.full_name}</p>
                   <p className="text-xs text-muted-foreground uppercase">{profile?.role}</p>
                 </div>
-                <div className="w-9 h-9 rounded-full border border-border flex items-center justify-center bg-muted">
-                  <User className="w-4 h-4 text-muted-foreground" />
+                <div className="w-9 h-9 rounded-full border border-border flex items-center justify-center bg-muted overflow-hidden">
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-4 h-4 text-muted-foreground" />
+                  )}
                 </div>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48 bg-card border-border">
-              <DropdownMenuItem className="text-muted-foreground">
+              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
                 {profile?.branch}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">
+              </div>
+              <DropdownMenuSeparator className="bg-border" />
+              <Link to="/settings">
+                <DropdownMenuItem className="cursor-pointer">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Settings
+                </DropdownMenuItem>
+              </Link>
+              <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive cursor-pointer">
                 <LogOut className="w-4 h-4 mr-2" />
                 Sign out
               </DropdownMenuItem>
