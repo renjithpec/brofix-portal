@@ -64,6 +64,7 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
   const isAdmin = profile?.role === 'admin';
   const isOwner = user?.id === complaint.user_id;
   const isEditable = isOwner && complaint.status === 'Open';
+  const wasEdited = complaint.updated_at && complaint.updated_at !== complaint.created_at;
 
   const handleVote = async (e: React.MouseEvent, voteType: 'like' | 'dislike') => {
     e.preventDefault();
@@ -178,6 +179,11 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
               <Badge variant="outline" className={cn('text-xs', getStatusClass(complaint.status))}>
                 {getStatusLabel(complaint.status)}
               </Badge>
+              {wasEdited && (
+                <span className="text-[10px] text-muted-foreground bg-secondary/50 px-1.5 py-0.5 rounded flex items-center gap-1">
+                  <Pencil className="w-3 h-3" /> Edited
+                </span>
+              )}
             </div>
             <h3 className="text-lg font-semibold text-foreground">{complaint.title}</h3>
             <p className="text-muted-foreground text-sm mt-1 line-clamp-2">{complaint.description}</p>
