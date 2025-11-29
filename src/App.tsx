@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import History from "./pages/History";
 import Stats from "./pages/Stats";
 import Team from "./pages/Team";
+import Settings from "./pages/Settings"; // Import the new page
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
             }>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/history" element={<History />} />
+              <Route path="/settings" element={<Settings />} /> {/* Add this route */}
               <Route path="/stats" element={
                 <ProtectedRoute adminOnly>
                   <Stats />
