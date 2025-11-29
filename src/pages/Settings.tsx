@@ -13,11 +13,12 @@ const Settings = () => {
   const [loading, setLoading] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
   
-  // Initialize with empty strings
+  // Profile State
   const [fullName, setFullName] = useState('');
   const [branch, setBranch] = useState<Branch | string>('');
   
   // Password State
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   
@@ -62,16 +63,53 @@ const Settings = () => {
 
   const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!currentPassword) {
+      toast({
+        title: 'Error',
+        description: 'Please enter your current password.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
       toast({
         title: 'Error',
-        description: 'Passwords do not match.',
+        description: 'New passwords do not match.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        title: 'Error',
+        description: 'New password must be at least 6 characters.',
         variant: 'destructive'
       });
       return;
     }
 
     setLoading(true);
+
+    // 1. Verify Current Password first
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user?.email || '',
+      password: currentPassword,
+    });
+
+    if (signInError) {
+      toast({
+        title: 'Error',
+        description: 'Incorrect current password.',
+        variant: 'destructive'
+      });
+      setLoading(false);
+      return;
+    }
+
+    // 2. Update to New Password
     const { error } = await supabase.auth.updateUser({
       password: newPassword
     });
@@ -87,6 +125,8 @@ const Settings = () => {
         title: 'Success',
         description: 'Password updated successfully.'
       });
+      // Reset fields
+      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     }
@@ -243,6 +283,19 @@ const Settings = () => {
           <Lock className="w-5 h-5" /> Security
         </h3>
         <form onSubmit={handlePasswordUpdate} className="space-y-4">
+           
+           {/* Current Password */}
+           <div>
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Current Password</label>
+              <Input 
+                type="password" 
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="bg-secondary/50 border-border" 
+              />
+           </div>
+
+           {/* New Passwords Grid */}
            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
              <div>
                 <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">New Password</label>
@@ -255,7 +308,7 @@ const Settings = () => {
                 />
              </div>
              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Confirm Password</label>
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Confirm New Password</label>
                 <Input 
                   type="password" 
                   value={confirmPassword}
@@ -265,8 +318,9 @@ const Settings = () => {
                 />
              </div>
            </div>
+
            <div className="flex justify-end pt-2">
-             <Button type="submit" disabled={loading || !newPassword}>
+             <Button type="submit" disabled={loading || !newPassword || !currentPassword}>
                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                Update Password
              </Button>
