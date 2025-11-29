@@ -82,12 +82,15 @@ const Header = () => {
                 {profile?.branch}
               </div>
               <DropdownMenuSeparator className="bg-border" />
+              
+              {/* THIS IS THE MISSING LINK */}
               <Link to="/settings">
                 <DropdownMenuItem className="cursor-pointer">
                   <Settings className="w-4 h-4 mr-2" />
                   Settings
                 </DropdownMenuItem>
               </Link>
+
               <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive cursor-pointer">
                 <LogOut className="w-4 h-4 mr-2" />
                 Sign out
