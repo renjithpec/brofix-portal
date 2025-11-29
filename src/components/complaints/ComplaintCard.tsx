@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ThumbsUp, ThumbsDown, MessageSquare, Clock, User } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Clock, User, Pencil, ZoomIn, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,7 @@ import { getCategoryClass, getStatusClass, getStatusLabel, Status, Category } fr
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import AdminActions from './AdminActions';
+import EditComplaintDialog from './EditComplaintDialog';
 
 type Complaint = {
   id: string;
@@ -44,7 +45,16 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
   const [optimisticScore, setOptimisticScore] = useState(complaint.score);
   const [optimisticVote, setOptimisticVote] = useState(userVote?.vote_type || null);
   const [voting, setVoting] = useState(false);
+  
+  // Edit Modal State
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  
+  // Image Modal State
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  
   const isAdmin = profile?.role === 'admin';
+  const isOwner = user?.id === complaint.user_id;
+  const isEditable = isOwner && complaint.status === 'Open';
 
   const handleVote = async (e: React.MouseEvent, voteType: 'like' | 'dislike') => {
     e.preventDefault();
@@ -108,94 +118,148 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
   };
 
   return (
-    <div 
-      id={`complaint-${complaint.id}`}
-      className="glass-card p-6 space-y-4 animate-fade-in"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <Badge className={cn('text-xs', getCategoryClass(complaint.category))}>
-              {complaint.category}
-            </Badge>
-            <Badge variant="outline" className={cn('text-xs', getStatusClass(complaint.status))}>
-              {getStatusLabel(complaint.status)}
-            </Badge>
+    <>
+      <div 
+        id={`complaint-${complaint.id}`}
+        className="glass-card p-6 space-y-4 animate-fade-in"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <Badge className={cn('text-xs', getCategoryClass(complaint.category))}>
+                {complaint.category}
+              </Badge>
+              <Badge variant="outline" className={cn('text-xs', getStatusClass(complaint.status))}>
+                {getStatusLabel(complaint.status)}
+              </Badge>
+            </div>
+            <h3 className="text-lg font-semibold text-foreground">{complaint.title}</h3>
+            <p className="text-muted-foreground text-sm mt-1 line-clamp-2">{complaint.description}</p>
           </div>
-          <h3 className="text-lg font-semibold text-foreground">{complaint.title}</h3>
-          <p className="text-muted-foreground text-sm mt-1 line-clamp-2">{complaint.description}</p>
+          
+          {complaint.image_url && (
+            <div 
+              className="relative group cursor-pointer"
+              onClick={() => setIsImageModalOpen(true)}
+            >
+              <img 
+                src={complaint.image_url} 
+                alt="Complaint" 
+                className="w-20 h-20 rounded-lg object-cover border border-border transition-all group-hover:opacity-80"
+              />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <ZoomIn className="w-6 h-6 text-white drop-shadow-md" />
+              </div>
+            </div>
+          )}
         </div>
-        
-        {complaint.image_url && (
-          <img 
-            src={complaint.image_url} 
-            alt="Complaint" 
-            className="w-20 h-20 rounded-lg object-cover"
-          />
+
+        {complaint.admin_remark && (
+          <div className="bg-muted/50 rounded-lg p-3">
+            <p className="text-xs text-muted-foreground mb-1">Admin Remark:</p>
+            <p className="text-sm text-foreground">{complaint.admin_remark}</p>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between pt-2 border-t border-border">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1">
+              <Button 
+                type="button"
+                variant="ghost" 
+                size="sm" 
+                className={cn(
+                  'h-8 px-2',
+                  optimisticVote === 'like' && 'text-emerald-400 bg-emerald-400/10'
+                )}
+                onClick={(e) => handleVote(e, 'like')}
+                disabled={voting}
+              >
+                <ThumbsUp className="w-4 h-4" />
+              </Button>
+              <span className={cn(
+                'text-sm font-medium min-w-[2rem] text-center',
+                optimisticScore > 0 ? 'text-emerald-400' : optimisticScore < 0 ? 'text-destructive' : 'text-muted-foreground'
+              )}>
+                {optimisticScore}
+              </span>
+              <Button 
+                type="button"
+                variant="ghost" 
+                size="sm" 
+                className={cn(
+                  'h-8 px-2',
+                  optimisticVote === 'dislike' && 'text-destructive bg-destructive/10'
+                )}
+                onClick={(e) => handleVote(e, 'dislike')}
+                disabled={voting}
+              >
+                <ThumbsDown className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <User className="w-3 h-3" />
+              {complaint.profiles?.full_name || 'Anonymous'}
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {new Date(complaint.created_at).toLocaleDateString()}
+            </span>
+            
+            {/* Edit Button for Owner */}
+            {isEditable && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsEditOpen(true)}
+                className="h-7 px-2 text-xs hover:bg-secondary"
+              >
+                <Pencil className="w-3 h-3 mr-1.5" />
+                Edit
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {isAdmin && complaint.status !== 'Resolved' && (
+          <AdminActions complaint={complaint} onStatusChange={onStatusChange} />
         )}
       </div>
 
-      {complaint.admin_remark && (
-        <div className="bg-muted/50 rounded-lg p-3">
-          <p className="text-xs text-muted-foreground mb-1">Admin Remark:</p>
-          <p className="text-sm text-foreground">{complaint.admin_remark}</p>
-        </div>
+      {/* Edit Dialog Component */}
+      {isEditable && (
+        <EditComplaintDialog 
+          complaint={complaint}
+          open={isEditOpen}
+          onOpenChange={setIsEditOpen}
+          onComplaintUpdated={() => onStatusChange?.()} 
+        />
       )}
 
-      <div className="flex items-center justify-between pt-2 border-t border-border">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1">
-            <Button 
-              type="button"
-              variant="ghost" 
-              size="sm" 
-              className={cn(
-                'h-8 px-2',
-                optimisticVote === 'like' && 'text-emerald-400 bg-emerald-400/10'
-              )}
-              onClick={(e) => handleVote(e, 'like')}
-              disabled={voting}
-            >
-              <ThumbsUp className="w-4 h-4" />
-            </Button>
-            <span className={cn(
-              'text-sm font-medium min-w-[2rem] text-center',
-              optimisticScore > 0 ? 'text-emerald-400' : optimisticScore < 0 ? 'text-destructive' : 'text-muted-foreground'
-            )}>
-              {optimisticScore}
-            </span>
-            <Button 
-              type="button"
-              variant="ghost" 
-              size="sm" 
-              className={cn(
-                'h-8 px-2',
-                optimisticVote === 'dislike' && 'text-destructive bg-destructive/10'
-              )}
-              onClick={(e) => handleVote(e, 'dislike')}
-              disabled={voting}
-            >
-              <ThumbsDown className="w-4 h-4" />
-            </Button>
-          </div>
+      {/* Full Screen Image Modal */}
+      {isImageModalOpen && complaint.image_url && (
+        <div 
+          className="fixed inset-0 z-[150] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setIsImageModalOpen(false)}
+        >
+          <button 
+            onClick={() => setIsImageModalOpen(false)}
+            className="absolute top-4 right-4 p-2 bg-secondary/50 rounded-full text-foreground hover:bg-secondary transition-colors"
+          >
+            <X size={24} />
+          </button>
+          <img 
+            src={complaint.image_url} 
+            alt="Full Evidence" 
+            className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" 
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
-
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <User className="w-3 h-3" />
-            {complaint.profiles?.full_name || 'Anonymous'}
-          </span>
-          <span className="flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            {new Date(complaint.created_at).toLocaleDateString()}
-          </span>
-        </div>
-      </div>
-
-      {isAdmin && complaint.status !== 'Resolved' && (
-        <AdminActions complaint={complaint} onStatusChange={onStatusChange} />
       )}
-    </div>
+    </>
   );
 };
 
