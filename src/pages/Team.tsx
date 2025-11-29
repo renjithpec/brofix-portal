@@ -64,7 +64,7 @@ const Team = () => {
   const handleEditAdmin = async () => {
     if (!selectedAdmin) return;
     setSubmitting(true);
-    const updates: any = {};
+    const updates: { full_name?: string; branch?: string; contact_number?: string } = {};
     if (formData.fullName) updates.full_name = formData.fullName;
     if (formData.branch) updates.branch = formData.branch;
     if (formData.contactNumber) updates.contact_number = formData.contactNumber;
