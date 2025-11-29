@@ -74,6 +74,7 @@ const AdminActions = ({ complaint, onStatusChange }: AdminActionsProps) => {
   return (
     <>
       <div className="flex gap-2 pt-2">
+        {/* 1. Start Progress Button */}
         {complaint.status === 'Open' && (
           <Button
             type="button"
@@ -92,6 +93,7 @@ const AdminActions = ({ complaint, onStatusChange }: AdminActionsProps) => {
           </Button>
         )}
         
+        {/* 2. Resolve Button (Only appears after In_Progress) */}
         {complaint.status === 'In_Progress' && (
           <Button
             type="button"
@@ -111,6 +113,7 @@ const AdminActions = ({ complaint, onStatusChange }: AdminActionsProps) => {
         )}
       </div>
 
+      {/* Resolution Remark Modal */}
       <Dialog open={showRemarkDialog} onOpenChange={setShowRemarkDialog}>
         <DialogContent className="bg-[#09090b] border-zinc-800 text-white">
           <DialogHeader>
