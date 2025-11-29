@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { ThumbsUp, ThumbsDown, Clock, User, Pencil, ZoomIn, X } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Clock, User, Pencil, ZoomIn, X, Star, ShieldCheck, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { getCategoryClass, getStatusClass, getStatusLabel, Status, Category } from '@/lib/constants';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 import AdminActions from './AdminActions';
 import EditComplaintDialog from './EditComplaintDialog';
 
@@ -23,6 +25,7 @@ type Complaint = {
   review_comment: string | null;
   admin_remark: string | null;
   created_at: string;
+  updated_at: string;
   profiles?: {
     full_name: string;
   };
@@ -42,21 +45,28 @@ interface ComplaintCardProps {
 
 const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: ComplaintCardProps) => {
   const { user, profile } = useAuth();
+  const { toast } = useToast();
+  
+  // Voting State
   const [optimisticScore, setOptimisticScore] = useState(complaint.score);
   const [optimisticVote, setOptimisticVote] = useState(userVote?.vote_type || null);
   const [voting, setVoting] = useState(false);
   
-  // Edit Modal State
+  // Edit & Image Modal State
   const [isEditOpen, setIsEditOpen] = useState(false);
-  
-  // Image Modal State
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+
+  // Rating State
+  const [isReviewing, setIsReviewing] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
   
   const isAdmin = profile?.role === 'admin';
-  // Logic to check if user owns this complaint
   const isOwner = user?.id === complaint.user_id;
-  // Can only edit if you are the owner AND the status is Open
   const isEditable = isOwner && complaint.status === 'Open';
+  const wasEdited = complaint.updated_at && complaint.updated_at !== complaint.created_at;
 
   const handleVote = async (e: React.MouseEvent, voteType: 'like' | 'dislike') => {
     e.preventDefault();
@@ -71,15 +81,12 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
     // Calculate new score optimistically
     let scoreDelta = 0;
     if (optimisticVote === voteType) {
-      // Removing vote
       scoreDelta = voteType === 'like' ? -1 : 1;
       setOptimisticVote(null);
     } else if (optimisticVote) {
-      // Changing vote
       scoreDelta = voteType === 'like' ? 2 : -2;
       setOptimisticVote(voteType);
     } else {
-      // New vote
       scoreDelta = voteType === 'like' ? 1 : -1;
       setOptimisticVote(voteType);
     }
@@ -88,14 +95,11 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
     try {
       if (userVote) {
         if (userVote.vote_type === voteType) {
-          // Remove vote
           await supabase.from('votes').delete().eq('id', userVote.id);
         } else {
-          // Update vote
           await supabase.from('votes').update({ vote_type: voteType }).eq('id', userVote.id);
         }
       } else {
-        // Create new vote
         await supabase.from('votes').insert({
           user_id: user.id,
           complaint_id: complaint.id,
@@ -103,7 +107,6 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
         });
       }
 
-      // Update complaint score
       await supabase
         .from('complaints')
         .update({ score: optimisticScore + scoreDelta })
@@ -111,7 +114,6 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
 
       onVoteChange();
     } catch (error) {
-      // Revert on error
       setOptimisticScore(previousScore);
       setOptimisticVote(previousVote);
     }
@@ -119,21 +121,76 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
     setVoting(false);
   };
 
+  const handleSubmitReview = async () => {
+    if (rating === 0) return;
+    setSubmittingReview(true);
+
+    const { error } = await supabase
+      .from('complaints')
+      .update({
+        rating,
+        review_comment: reviewComment
+      })
+      .eq('id', complaint.id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to submit review.",
+        variant: "destructive"
+      });
+    } else {
+      // NOTIFY ADMIN of the review
+      // Find admins of this branch
+      const { data: admins } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('branch', complaint.branch)
+        .eq('role', 'admin');
+
+      if (admins) {
+        const notifications = admins.map(admin => ({
+          user_id: admin.id,
+          type: 'review_received',
+          message: `⭐ Student rated "${complaint.title}": ${rating} Stars`,
+          complaint_id: complaint.id
+        }));
+        await supabase.from('notifications').insert(notifications);
+      }
+
+      toast({
+        title: "Review Submitted",
+        description: "Thank you for your feedback!"
+      });
+      setIsReviewing(false);
+      onStatusChange?.(); // Refresh data
+    }
+    setSubmittingReview(false);
+  };
+
   return (
     <>
       <div 
         id={`complaint-${complaint.id}`}
-        className="glass-card p-6 space-y-4 animate-fade-in"
+        className={cn(
+          "glass-card p-6 space-y-4 animate-fade-in transition-all duration-500",
+          complaint.status === 'In_Progress' && "border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.1)]"
+        )}
       >
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
               <Badge className={cn('text-xs', getCategoryClass(complaint.category))}>
                 {complaint.category}
               </Badge>
               <Badge variant="outline" className={cn('text-xs', getStatusClass(complaint.status))}>
                 {getStatusLabel(complaint.status)}
               </Badge>
+              {wasEdited && (
+                <span className="text-[10px] text-muted-foreground bg-secondary/50 px-1.5 py-0.5 rounded flex items-center gap-1">
+                  <Pencil className="w-3 h-3" /> Edited
+                </span>
+              )}
             </div>
             <h3 className="text-lg font-semibold text-foreground">{complaint.title}</h3>
             <p className="text-muted-foreground text-sm mt-1 line-clamp-2">{complaint.description}</p>
@@ -141,7 +198,7 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
           
           {complaint.image_url && (
             <div 
-              className="relative group cursor-pointer"
+              className="relative group cursor-pointer shrink-0"
               onClick={() => setIsImageModalOpen(true)}
             >
               <img 
@@ -149,17 +206,103 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
                 alt="Complaint" 
                 className="w-20 h-20 rounded-lg object-cover border border-border transition-all group-hover:opacity-80"
               />
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <ZoomIn className="w-6 h-6 text-white drop-shadow-md" />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-lg">
+                <ZoomIn className="w-6 h-6 text-white" />
               </div>
             </div>
           )}
         </div>
 
-        {complaint.admin_remark && (
-          <div className="bg-muted/50 rounded-lg p-3">
-            <p className="text-xs text-muted-foreground mb-1">Admin Remark:</p>
-            <p className="text-sm text-foreground">{complaint.admin_remark}</p>
+        {/* RESOLUTION & FEEDBACK SECTION */}
+        {complaint.status === 'Resolved' && (
+          <div className="space-y-3 pt-2">
+            
+            {/* Admin Remark */}
+            {complaint.admin_remark && (
+              <div className="bg-zinc-900/50 border border-green-900/30 rounded-lg p-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-green-500 uppercase tracking-wider mb-1">
+                  <ShieldCheck className="w-3 h-3" /> Admin Remark
+                </div>
+                <p className="text-sm text-zinc-300 italic">"{complaint.admin_remark}"</p>
+              </div>
+            )}
+
+            {/* Existing Rating Display */}
+            {complaint.rating ? (
+              <div className="bg-yellow-950/20 border border-yellow-700/30 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2 text-xs font-bold text-yellow-500 uppercase tracking-wider">
+                    <Star className="w-3 h-3 fill-yellow-500" /> Student Feedback
+                  </div>
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star 
+                        key={star} 
+                        className={cn("w-3 h-3", star <= (complaint.rating || 0) ? "text-yellow-400 fill-yellow-400" : "text-zinc-700")} 
+                      />
+                    ))}
+                  </div>
+                </div>
+                {complaint.review_comment && (
+                  <p className="text-sm text-zinc-300">"{complaint.review_comment}"</p>
+                )}
+              </div>
+            ) : (
+              /* Rate & Reply Form (Only visible to Owner) */
+              isOwner && (
+                <div className="bg-zinc-900/50 border border-dashed border-zinc-700 rounded-lg p-4 transition-all">
+                  {!isReviewing ? (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-zinc-400">Issue resolved? Rate the service.</span>
+                      <Button size="sm" variant="outline" onClick={() => setIsReviewing(true)} className="h-8 text-xs">
+                        Rate Resolution
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 animate-in slide-in-from-top-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold text-white">How was the resolution?</span>
+                        <div className="flex gap-1">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              type="button"
+                              onMouseEnter={() => setHoverRating(star)}
+                              onMouseLeave={() => setHoverRating(0)}
+                              onClick={() => setRating(star)}
+                              className="focus:outline-none transition-transform hover:scale-110"
+                            >
+                              <Star 
+                                className={cn("w-6 h-6", star <= (hoverRating || rating) ? "text-yellow-400 fill-yellow-400" : "text-zinc-600")} 
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <Textarea
+                        className="bg-black border-zinc-700 text-sm min-h-[60px]"
+                        placeholder="Any comments for the admin? (Optional)"
+                        value={reviewComment}
+                        onChange={(e) => setReviewComment(e.target.value)}
+                      />
+
+                      <div className="flex gap-2 justify-end">
+                        <Button size="sm" variant="ghost" onClick={() => setIsReviewing(false)}>Cancel</Button>
+                        <Button 
+                          size="sm" 
+                          disabled={rating === 0 || submittingReview} 
+                          onClick={handleSubmitReview}
+                          className="bg-white text-black hover:bg-zinc-200"
+                        >
+                          {submittingReview ? "Sending..." : "Submit Review"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            )}
           </div>
         )}
 
@@ -211,7 +354,7 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
               {new Date(complaint.created_at).toLocaleDateString()}
             </span>
             
-            {/* Edit Button: Only appears if you are Owner and Status is Open */}
+            {/* Edit Button for Owner */}
             {isEditable && (
               <Button
                 variant="ghost"
@@ -251,7 +394,7 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
             onClick={() => setIsImageModalOpen(false)}
             className="absolute top-4 right-4 p-2 bg-secondary/50 rounded-full text-foreground hover:bg-secondary transition-colors"
           >
-            <X size={24} />
+            <X className="w-6 h-6" />
           </button>
           <img 
             src={complaint.image_url} 
