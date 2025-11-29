@@ -2,95 +2,64 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* BroFix Dark Theme - Black & Blue Monochromatic */
+    --background: 222 47% 5%;
+    --foreground: 0 0% 98%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 222 47% 8%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 222 47% 5%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 222 30% 15%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 222 30% 12%;
+    --muted-foreground: 215 20% 55%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 217 91% 60%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 222 30% 18%;
+    --input: 222 30% 15%;
+    --ring: 217 91% 60%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Custom BroFix colors */
+    --brofix-blue: 217 91% 60%;
+    --brofix-blue-glow: 217 91% 70%;
+    --glass-bg: 222 47% 8%;
+    --glass-border: 222 30% 20%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    /* Status colors */
+    --status-open: 38 92% 50%;
+    --status-progress: 217 91% 60%;
+    --status-resolved: 142 71% 45%;
 
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar */
+    --sidebar-background: 222 47% 6%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 30% 12%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 222 30% 15%;
+    --sidebar-ring: 217 91% 60%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --background: 222 47% 5%;
+    --foreground: 0 0% 98%;
   }
 }
 
@@ -100,6 +69,176 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+@layer components {
+  /* Glassmorphism card */
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-xl border border-glass-border rounded-xl;
+  }
+
+  /* Fluid background animation */
+  .fluid-background {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    background: hsl(var(--background));
+  }
+
+  .fluid-background::before {
+    content: '';
+    position: absolute;
+    width: 150%;
+    height: 150%;
+    top: -25%;
+    left: -25%;
+    background: 
+      radial-gradient(ellipse 600px 600px at 20% 30%, hsla(217, 91%, 30%, 0.15), transparent 70%),
+      radial-gradient(ellipse 500px 500px at 70% 60%, hsla(240, 50%, 25%, 0.12), transparent 70%),
+      radial-gradient(ellipse 400px 400px at 40% 80%, hsla(217, 91%, 35%, 0.1), transparent 60%);
+    animation: fluid-move 20s ease-in-out infinite;
+  }
+
+  .fluid-background::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+  }
+
+  @keyframes fluid-move {
+    0%, 100% {
+      transform: translate(0, 0) rotate(0deg);
+    }
+    33% {
+      transform: translate(2%, -2%) rotate(1deg);
+    }
+    66% {
+      transform: translate(-1%, 1%) rotate(-0.5deg);
+    }
+  }
+
+  /* Logo styles */
+  .logo-bro {
+    @apply bg-primary text-primary-foreground px-3 py-1 font-black tracking-tight;
+  }
+
+  .logo-totype {
+    @apply text-foreground font-black tracking-tight;
+  }
+
+  /* Status badges */
+  .status-open {
+    @apply bg-amber-500/20 text-amber-400 border-amber-500/30;
+  }
+
+  .status-in-progress {
+    @apply bg-blue-500/20 text-blue-400 border-blue-500/30;
+  }
+
+  .status-resolved {
+    @apply bg-emerald-500/20 text-emerald-400 border-emerald-500/30;
+  }
+
+  /* Tab toggle styles */
+  .tab-toggle {
+    @apply relative flex rounded-lg bg-muted p-1;
+  }
+
+  .tab-toggle-item {
+    @apply relative z-10 flex-1 px-6 py-2 text-sm font-semibold uppercase tracking-wider transition-colors duration-200;
+  }
+
+  .tab-toggle-item[data-state="active"] {
+    @apply bg-primary text-primary-foreground rounded-md;
+  }
+
+  .tab-toggle-item[data-state="inactive"] {
+    @apply text-muted-foreground hover:text-foreground;
+  }
+
+  /* Glow button */
+  .btn-glow {
+    @apply relative overflow-hidden transition-all duration-300;
+  }
+
+  .btn-glow:hover {
+    @apply scale-105;
+    box-shadow: 0 0 30px hsla(var(--primary), 0.3);
+  }
+
+  /* Input with icon */
+  .input-with-icon {
+    @apply flex items-center gap-3 bg-secondary/50 border border-border rounded-lg px-4 py-3 focus-within:ring-2 focus-within:ring-accent focus-within:border-accent transition-all;
+  }
+
+  .input-with-icon input {
+    @apply bg-transparent border-none outline-none flex-1 text-foreground placeholder:text-muted-foreground;
+  }
+
+  .input-with-icon svg {
+    @apply text-muted-foreground w-5 h-5;
+  }
+
+  /* Category badges */
+  .category-wifi {
+    @apply bg-purple-500/20 text-purple-400;
+  }
+
+  .category-food {
+    @apply bg-orange-500/20 text-orange-400;
+  }
+
+  .category-cleanliness {
+    @apply bg-cyan-500/20 text-cyan-400;
+  }
+
+  .category-academics {
+    @apply bg-emerald-500/20 text-emerald-400;
+  }
+
+  .category-other {
+    @apply bg-zinc-500/20 text-zinc-400;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scale-in 0.2s ease-out;
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
   }
 }
