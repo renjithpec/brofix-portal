@@ -50,11 +50,11 @@ const AdminActions = ({ complaint, onStatusChange }: AdminActionsProps) => {
         variant: 'destructive'
       });
     } else {
-      // Create notification for user
+      // NOTIFY THE STUDENT
       await supabase.from('notifications').insert({
         user_id: complaint.user_id,
         type: 'status_change',
-        message: `Your complaint "${complaint.title}" has been ${newStatus === 'In_Progress' ? 'picked up and is in progress' : 'resolved'}`,
+        message: `Your complaint "${complaint.title}" is now ${newStatus.replace('_', ' ')}`,
         complaint_id: complaint.id
       });
 
@@ -71,27 +71,15 @@ const AdminActions = ({ complaint, onStatusChange }: AdminActionsProps) => {
     setRemark('');
   };
 
-  const handleStartProgress = () => {
-    updateStatus('In_Progress');
-  };
-
-  const handleMarkResolved = () => {
-    setShowRemarkDialog(true);
-  };
-
-  const handleSubmitResolution = () => {
-    updateStatus('Resolved', remark || undefined);
-  };
-
   return (
     <>
       <div className="flex gap-2 pt-2">
         {complaint.status === 'Open' && (
           <Button
             type="button"
-            onClick={handleStartProgress}
+            onClick={() => updateStatus('In_Progress')}
             disabled={loading}
-            className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90"
+            className="flex-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-600/30"
           >
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -107,9 +95,9 @@ const AdminActions = ({ complaint, onStatusChange }: AdminActionsProps) => {
         {complaint.status === 'In_Progress' && (
           <Button
             type="button"
-            onClick={handleMarkResolved}
+            onClick={() => setShowRemarkDialog(true)}
             disabled={loading}
-            className="flex-1 bg-emerald-600 text-white hover:bg-emerald-700"
+            className="flex-1 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-600/30"
           >
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -124,24 +112,24 @@ const AdminActions = ({ complaint, onStatusChange }: AdminActionsProps) => {
       </div>
 
       <Dialog open={showRemarkDialog} onOpenChange={setShowRemarkDialog}>
-        <DialogContent className="bg-card border-border">
+        <DialogContent className="bg-[#09090b] border-zinc-800 text-white">
           <DialogHeader>
             <DialogTitle>Resolution Remark</DialogTitle>
-            <DialogDescription>
-              Add a remark about how this issue was resolved (optional)
+            <DialogDescription className="text-zinc-400">
+              Add a remark about how this issue was resolved.
             </DialogDescription>
           </DialogHeader>
           <Textarea
             placeholder="Enter your remark..."
             value={remark}
             onChange={(e) => setRemark(e.target.value)}
-            className="bg-secondary/50 border-border"
+            className="bg-[#18181b] border-zinc-800 text-white focus-visible:ring-zinc-700 min-h-[100px]"
           />
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowRemarkDialog(false)}>
+            <Button variant="ghost" onClick={() => setShowRemarkDialog(false)} className="text-zinc-400 hover:text-white">
               Cancel
             </Button>
-            <Button onClick={handleSubmitResolution} disabled={loading}>
+            <Button onClick={() => updateStatus('Resolved', remark)} disabled={loading} className="bg-white text-black hover:bg-zinc-200">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Submit'}
             </Button>
           </DialogFooter>
