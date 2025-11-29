@@ -114,12 +114,6 @@ const EditComplaintDialog = ({
           .from('complaint-images')
           .getPublicUrl(filePath);
         finalImageUrl = publicUrl;
-      } else {
-        toast({
-          title: 'Warning',
-          description: 'Failed to upload image, but updating text details.',
-          variant: 'destructive'
-        });
       }
     }
 
