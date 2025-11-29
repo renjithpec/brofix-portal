@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
 
 type Profile = {
   id: string;
@@ -17,7 +16,8 @@ type AuthContextType = {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string, branch: string) => Promise<{ error: Error | null }>;
+  // Updated signUp to accept role
+  signUp: (email: string, password: string, fullName: string, branch: string, role?: 'student' | 'admin') => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   isSuperAdmin: boolean;
@@ -71,7 +71,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string, branch: string) => {
+  // Updated signUp function
+  const signUp = async (email: string, password: string, fullName: string, branch: string, role: 'student' | 'admin' = 'student') => {
     const redirectUrl = `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
@@ -82,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         data: {
           full_name: fullName,
           branch: branch,
-          role: 'student'
+          role: role // Pass the role dynamically
         }
       }
     });
