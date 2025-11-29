@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { User, Lock, Mail, Camera, Loader2, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,8 +12,10 @@ const Settings = () => {
   const { user, profile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
-  const [fullName, setFullName] = useState(profile?.full_name || '');
-  const [branch, setBranch] = useState<Branch | string>(profile?.branch || '');
+  
+  // Initialize with empty strings
+  const [fullName, setFullName] = useState('');
+  const [branch, setBranch] = useState<Branch | string>('');
   
   // Password State
   const [newPassword, setNewPassword] = useState('');
@@ -21,6 +23,15 @@ const Settings = () => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  // --- THE FIX: Sync state when profile data loads ---
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name || '');
+      setBranch(profile.branch || '');
+    }
+  }, [profile]); // This runs every time 'profile' updates
+  // --------------------------------------------------
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +100,7 @@ const Settings = () => {
 
     setAvatarLoading(true);
     const fileExt = file.name.split('.').pop();
-    const filePath = `${user.id}/avatar.${fileExt}`;
+    const filePath = `${user.id}/avatar.${fileExt}`; // Overwrite existing file
 
     // 1. Upload Image
     const { error: uploadError } = await supabase.storage
@@ -110,11 +121,14 @@ const Settings = () => {
     const { data: { publicUrl } } = supabase.storage
       .from('avatars')
       .getPublicUrl(filePath);
+    
+    // Add a timestamp to bust the cache so the image updates immediately
+    const publicUrlWithCacheBust = `${publicUrl}?t=${new Date().getTime()}`;
 
     // 3. Update Profile
     const { error: updateError } = await supabase
       .from('profiles')
-      .update({ avatar_url: publicUrl })
+      .update({ avatar_url: publicUrlWithCacheBust })
       .eq('id', user.id);
 
     if (updateError) {
@@ -126,8 +140,10 @@ const Settings = () => {
     } else {
       toast({
         title: 'Success',
-        description: 'Avatar updated successfully. Refresh to see changes.'
+        description: 'Avatar updated successfully.'
       });
+      // Force a reload to show the new image in the header immediately
+      window.location.reload();
     }
     setAvatarLoading(false);
   };
@@ -211,7 +227,7 @@ const Settings = () => {
                   </div>
                 </SelectTrigger>
                 <SelectContent className="bg-card border-border">
-                  {BRANCHES.map(b => (
+                  {BRANCHES.map((b) => (
                     <SelectItem key={b} value={b}>{b}</SelectItem>
                   ))}
                 </SelectContent>
