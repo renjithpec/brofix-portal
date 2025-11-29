@@ -13,7 +13,7 @@ const Settings = () => {
   const [loading, setLoading] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
   
-  // Initialize with empty strings
+  // Initialize with empty strings to prevent uncontrolled/controlled warning
   const [fullName, setFullName] = useState('');
   const [branch, setBranch] = useState<Branch | string>('');
   
@@ -24,14 +24,13 @@ const Settings = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // --- THE FIX: Sync state when profile data loads ---
+  // Sync state when profile data loads
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name || '');
       setBranch(profile.branch || '');
     }
-  }, [profile]); // This runs every time 'profile' updates
-  // --------------------------------------------------
+  }, [profile]);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,7 +99,7 @@ const Settings = () => {
 
     setAvatarLoading(true);
     const fileExt = file.name.split('.').pop();
-    const filePath = `${user.id}/avatar.${fileExt}`; // Overwrite existing file
+    const filePath = `${user.id}/avatar.${fileExt}`;
 
     // 1. Upload Image
     const { error: uploadError } = await supabase.storage
@@ -122,13 +121,13 @@ const Settings = () => {
       .from('avatars')
       .getPublicUrl(filePath);
     
-    // Add a timestamp to bust the cache so the image updates immediately
-    const publicUrlWithCacheBust = `${publicUrl}?t=${new Date().getTime()}`;
+    // Cache busting to ensure image updates immediately in UI
+    const publicUrlWithCache = `${publicUrl}?t=${new Date().getTime()}`;
 
     // 3. Update Profile
     const { error: updateError } = await supabase
       .from('profiles')
-      .update({ avatar_url: publicUrlWithCacheBust })
+      .update({ avatar_url: publicUrlWithCache })
       .eq('id', user.id);
 
     if (updateError) {
@@ -140,10 +139,10 @@ const Settings = () => {
     } else {
       toast({
         title: 'Success',
-        description: 'Avatar updated successfully.'
+        description: 'Avatar updated successfully. Refreshing...'
       });
-      // Force a reload to show the new image in the header immediately
-      window.location.reload();
+      // Reload to reflect changes everywhere
+      setTimeout(() => window.location.reload(), 1000);
     }
     setAvatarLoading(false);
   };
@@ -272,7 +271,8 @@ const Settings = () => {
              </div>
            </div>
            <div className="flex justify-end pt-2">
-             <Button type="submit" variant="secondary" disabled={loading || !newPassword}>
+             {/* Button changed to default variant (White) */}
+             <Button type="submit" disabled={loading || !newPassword}>
                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                Update Password
              </Button>
