@@ -193,14 +193,28 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  assigned_role app_role;
 BEGIN
+  -- Automatically assign 'admin' role to specific email addresses
+  IF NEW.email = 'admin.kochi@brototype.com' 
+     OR NEW.email = 'admin.blr@brototype.com'
+     OR NEW.email = 'admin.clt@brototype.com'
+     OR NEW.email = 'admin.chn@brototype.com'
+     OR NEW.email = 'admin.cbe@brototype.com'
+     OR NEW.email = 'admin.tvm@brototype.com' THEN
+    assigned_role := 'admin';
+  ELSE
+    assigned_role := COALESCE((NEW.raw_user_meta_data ->> 'role')::app_role, 'student');
+  END IF;
+
   INSERT INTO public.profiles (id, email, full_name, branch, role)
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data ->> 'full_name', 'User'),
     COALESCE(NEW.raw_user_meta_data ->> 'branch', 'Kochi'),
-    COALESCE((NEW.raw_user_meta_data ->> 'role')::app_role, 'student')
+    assigned_role
   );
   RETURN NEW;
 END;
