@@ -16,7 +16,6 @@ type AuthContextType = {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  // Updated signUp to accept role
   signUp: (email: string, password: string, fullName: string, branch: string, role?: 'student' | 'admin') => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -39,7 +38,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .single();
     
     if (!error && data) {
-      setProfile(data as Profile);
+      // --- FORCE ADMIN ROLE FIX ---
+      // This ensures that even if the DB says "student", the code treats you as Admin
+      const forcedAdminEmails = [
+        'admin.kochi@brototype.com',
+        'admin.blr@brototype.com',
+        'admin.clt@brototype.com',
+        'admin.chn@brototype.com',
+        'admin.cbe@brototype.com',
+        'admin.tvm@brototype.com'
+      ];
+
+      const finalProfile = data as Profile;
+      
+      if (forcedAdminEmails.includes(data.email)) {
+        finalProfile.role = 'admin';
+        // Also force the correct branch just in case
+        if (data.email === 'admin.kochi@brototype.com') finalProfile.branch = 'Kochi';
+      }
+      // -----------------------------
+
+      setProfile(finalProfile);
     }
   };
 
@@ -71,7 +90,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, []);
 
-  // Updated signUp function
   const signUp = async (email: string, password: string, fullName: string, branch: string, role: 'student' | 'admin' = 'student') => {
     const redirectUrl = `${window.location.origin}/`;
     
@@ -83,7 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         data: {
           full_name: fullName,
           branch: branch,
-          role: role // Pass the role dynamically
+          role: role
         }
       }
     });
