@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ThumbsUp, ThumbsDown, Clock, User, Pencil, ZoomIn, X, Star, ShieldCheck, Send } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Clock, User, Pencil, ZoomIn, X, Star, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -47,16 +47,14 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
   const { user, profile } = useAuth();
   const { toast } = useToast();
   
-  // Voting State
   const [optimisticScore, setOptimisticScore] = useState(complaint.score);
   const [optimisticVote, setOptimisticVote] = useState(userVote?.vote_type || null);
   const [voting, setVoting] = useState(false);
   
-  // Edit & Image Modal State
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
-  // Rating State
+  // Review State
   const [isReviewing, setIsReviewing] = useState(false);
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -66,7 +64,6 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
   const isAdmin = profile?.role === 'admin';
   const isOwner = user?.id === complaint.user_id;
   const isEditable = isOwner && complaint.status === 'Open';
-  const wasEdited = complaint.updated_at && complaint.updated_at !== complaint.created_at;
 
   const handleVote = async (e: React.MouseEvent, voteType: 'like' | 'dislike') => {
     e.preventDefault();
@@ -77,9 +74,8 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
 
     const previousScore = optimisticScore;
     const previousVote = optimisticVote;
-
-    // Calculate new score optimistically
     let scoreDelta = 0;
+
     if (optimisticVote === voteType) {
       scoreDelta = voteType === 'like' ? -1 : 1;
       setOptimisticVote(null);
@@ -140,8 +136,7 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
         variant: "destructive"
       });
     } else {
-      // NOTIFY ADMIN of the review
-      // Find admins of this branch
+      // Notify Admin
       const { data: admins } = await supabase
         .from('profiles')
         .select('id')
@@ -158,12 +153,9 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
         await supabase.from('notifications').insert(notifications);
       }
 
-      toast({
-        title: "Review Submitted",
-        description: "Thank you for your feedback!"
-      });
+      toast({ title: "Review Submitted", description: "Thank you for your feedback!" });
       setIsReviewing(false);
-      onStatusChange?.(); // Refresh data
+      onStatusChange?.();
     }
     setSubmittingReview(false);
   };
@@ -186,21 +178,13 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
               <Badge variant="outline" className={cn('text-xs', getStatusClass(complaint.status))}>
                 {getStatusLabel(complaint.status)}
               </Badge>
-              {wasEdited && (
-                <span className="text-[10px] text-muted-foreground bg-secondary/50 px-1.5 py-0.5 rounded flex items-center gap-1">
-                  <Pencil className="w-3 h-3" /> Edited
-                </span>
-              )}
             </div>
             <h3 className="text-lg font-semibold text-foreground">{complaint.title}</h3>
             <p className="text-muted-foreground text-sm mt-1 line-clamp-2">{complaint.description}</p>
           </div>
           
           {complaint.image_url && (
-            <div 
-              className="relative group cursor-pointer shrink-0"
-              onClick={() => setIsImageModalOpen(true)}
-            >
+            <div className="relative group cursor-pointer shrink-0" onClick={() => setIsImageModalOpen(true)}>
               <img 
                 src={complaint.image_url} 
                 alt="Complaint" 
@@ -216,8 +200,6 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
         {/* RESOLUTION & FEEDBACK SECTION */}
         {complaint.status === 'Resolved' && (
           <div className="space-y-3 pt-2">
-            
-            {/* Admin Remark */}
             {complaint.admin_remark && (
               <div className="bg-zinc-900/50 border border-green-900/30 rounded-lg p-3">
                 <div className="flex items-center gap-2 text-xs font-bold text-green-500 uppercase tracking-wider mb-1">
@@ -227,7 +209,6 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
               </div>
             )}
 
-            {/* Existing Rating Display */}
             {complaint.rating ? (
               <div className="bg-yellow-950/20 border border-yellow-700/30 rounded-lg p-3">
                 <div className="flex items-center justify-between mb-1">
@@ -236,19 +217,13 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
                   </div>
                   <div className="flex gap-0.5">
                     {[1, 2, 3, 4, 5].map((star) => (
-                      <Star 
-                        key={star} 
-                        className={cn("w-3 h-3", star <= (complaint.rating || 0) ? "text-yellow-400 fill-yellow-400" : "text-zinc-700")} 
-                      />
+                      <Star key={star} className={cn("w-3 h-3", star <= (complaint.rating || 0) ? "text-yellow-400 fill-yellow-400" : "text-zinc-700")} />
                     ))}
                   </div>
                 </div>
-                {complaint.review_comment && (
-                  <p className="text-sm text-zinc-300">"{complaint.review_comment}"</p>
-                )}
+                {complaint.review_comment && <p className="text-sm text-zinc-300">"{complaint.review_comment}"</p>}
               </div>
             ) : (
-              /* Rate & Reply Form (Only visible to Owner) */
               isOwner && (
                 <div className="bg-zinc-900/50 border border-dashed border-zinc-700 rounded-lg p-4 transition-all">
                   {!isReviewing ? (
@@ -272,29 +247,20 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
                               onClick={() => setRating(star)}
                               className="focus:outline-none transition-transform hover:scale-110"
                             >
-                              <Star 
-                                className={cn("w-6 h-6", star <= (hoverRating || rating) ? "text-yellow-400 fill-yellow-400" : "text-zinc-600")} 
-                              />
+                              <Star className={cn("w-6 h-6", star <= (hoverRating || rating) ? "text-yellow-400 fill-yellow-400" : "text-zinc-600")} />
                             </button>
                           ))}
                         </div>
                       </div>
-                      
                       <Textarea
                         className="bg-black border-zinc-700 text-sm min-h-[60px]"
                         placeholder="Any comments for the admin? (Optional)"
                         value={reviewComment}
                         onChange={(e) => setReviewComment(e.target.value)}
                       />
-
                       <div className="flex gap-2 justify-end">
                         <Button size="sm" variant="ghost" onClick={() => setIsReviewing(false)}>Cancel</Button>
-                        <Button 
-                          size="sm" 
-                          disabled={rating === 0 || submittingReview} 
-                          onClick={handleSubmitReview}
-                          className="bg-white text-black hover:bg-zinc-200"
-                        >
+                        <Button size="sm" disabled={rating === 0 || submittingReview} onClick={handleSubmitReview} className="bg-white text-black hover:bg-zinc-200">
                           {submittingReview ? "Sending..." : "Submit Review"}
                         </Button>
                       </div>
@@ -310,34 +276,19 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1">
               <Button 
-                type="button"
-                variant="ghost" 
-                size="sm" 
-                className={cn(
-                  'h-8 px-2',
-                  optimisticVote === 'like' && 'text-emerald-400 bg-emerald-400/10'
-                )}
-                onClick={(e) => handleVote(e, 'like')}
-                disabled={voting}
+                type="button" variant="ghost" size="sm" 
+                className={cn('h-8 px-2', optimisticVote === 'like' && 'text-emerald-400 bg-emerald-400/10')}
+                onClick={(e) => handleVote(e, 'like')} disabled={voting}
               >
                 <ThumbsUp className="w-4 h-4" />
               </Button>
-              <span className={cn(
-                'text-sm font-medium min-w-[2rem] text-center',
-                optimisticScore > 0 ? 'text-emerald-400' : optimisticScore < 0 ? 'text-destructive' : 'text-muted-foreground'
-              )}>
+              <span className={cn('text-sm font-medium min-w-[2rem] text-center', optimisticScore > 0 ? 'text-emerald-400' : optimisticScore < 0 ? 'text-destructive' : 'text-muted-foreground')}>
                 {optimisticScore}
               </span>
               <Button 
-                type="button"
-                variant="ghost" 
-                size="sm" 
-                className={cn(
-                  'h-8 px-2',
-                  optimisticVote === 'dislike' && 'text-destructive bg-destructive/10'
-                )}
-                onClick={(e) => handleVote(e, 'dislike')}
-                disabled={voting}
+                type="button" variant="ghost" size="sm" 
+                className={cn('h-8 px-2', optimisticVote === 'dislike' && 'text-destructive bg-destructive/10')}
+                onClick={(e) => handleVote(e, 'dislike')} disabled={voting}
               >
                 <ThumbsDown className="w-4 h-4" />
               </Button>
@@ -345,25 +296,11 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
           </div>
 
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <User className="w-3 h-3" />
-              {complaint.profiles?.full_name || 'Anonymous'}
-            </span>
-            <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {new Date(complaint.created_at).toLocaleDateString()}
-            </span>
-            
-            {/* Edit Button for Owner */}
+            <span className="flex items-center gap-1"><User className="w-3 h-3" />{complaint.profiles?.full_name || 'Anonymous'}</span>
+            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(complaint.created_at).toLocaleDateString()}</span>
             {isEditable && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsEditOpen(true)}
-                className="h-7 px-2 text-xs hover:bg-secondary transition-colors"
-              >
-                <Pencil className="w-3 h-3 mr-1.5" />
-                Edit
+              <Button variant="ghost" size="sm" onClick={() => setIsEditOpen(true)} className="h-7 px-2 text-xs hover:bg-secondary transition-colors">
+                <Pencil className="w-3 h-3 mr-1.5" /> Edit
               </Button>
             )}
           </div>
@@ -374,7 +311,6 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
         )}
       </div>
 
-      {/* Edit Dialog Component */}
       {isEditable && (
         <EditComplaintDialog 
           complaint={complaint}
@@ -384,24 +320,12 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
         />
       )}
 
-      {/* Full Screen Image Modal */}
       {isImageModalOpen && complaint.image_url && (
-        <div 
-          className="fixed inset-0 z-[150] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={() => setIsImageModalOpen(false)}
-        >
-          <button 
-            onClick={() => setIsImageModalOpen(false)}
-            className="absolute top-4 right-4 p-2 bg-secondary/50 rounded-full text-foreground hover:bg-secondary transition-colors"
-          >
-            <X className="w-6 h-6" />
+        <div className="fixed inset-0 z-[150] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setIsImageModalOpen(false)}>
+          <button onClick={() => setIsImageModalOpen(false)} className="absolute top-4 right-4 p-2 bg-secondary/50 rounded-full text-foreground hover:bg-secondary transition-colors">
+            <X size={24} />
           </button>
-          <img 
-            src={complaint.image_url} 
-            alt="Full Evidence" 
-            className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" 
-            onClick={(e) => e.stopPropagation()}
-          />
+          <img src={complaint.image_url} alt="Full Evidence" className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
         </div>
       )}
     </>
