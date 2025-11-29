@@ -87,8 +87,8 @@ const LoginForm = ({ isAdmin, onToggleSignup }: LoginFormProps) => {
         )}
       </Button>
 
-      {/* Removed the !isAdmin check so Admins can also see the Signup link */}
-      {onToggleSignup && (
+      {/* Only show Sign Up link if NOT on the Admin tab */}
+      {!isAdmin && onToggleSignup && (
         <p className="text-center text-muted-foreground text-sm">
           Don't have an account?{' '}
           <button 
