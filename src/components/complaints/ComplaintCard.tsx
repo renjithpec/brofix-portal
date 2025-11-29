@@ -53,7 +53,9 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   
   const isAdmin = profile?.role === 'admin';
+  // Logic to check if user owns this complaint
   const isOwner = user?.id === complaint.user_id;
+  // Can only edit if you are the owner AND the status is Open
   const isEditable = isOwner && complaint.status === 'Open';
 
   const handleVote = async (e: React.MouseEvent, voteType: 'like' | 'dislike') => {
@@ -209,13 +211,13 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
               {new Date(complaint.created_at).toLocaleDateString()}
             </span>
             
-            {/* Edit Button for Owner */}
+            {/* Edit Button: Only appears if you are Owner and Status is Open */}
             {isEditable && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsEditOpen(true)}
-                className="h-7 px-2 text-xs hover:bg-secondary"
+                className="h-7 px-2 text-xs hover:bg-secondary transition-colors"
               >
                 <Pencil className="w-3 h-3 mr-1.5" />
                 Edit
