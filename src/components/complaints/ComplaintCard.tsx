@@ -11,7 +11,6 @@ import { useToast } from '@/hooks/use-toast';
 import AdminActions from './AdminActions';
 import EditComplaintDialog from './EditComplaintDialog';
 
-// Define types locally if not imported
 type Complaint = {
   id: string;
   user_id: string;
@@ -42,12 +41,15 @@ interface ComplaintCardProps {
   userVote: Vote | null;
   onVoteChange: () => void;
   onStatusChange?: () => void;
+  isHighlighted?: boolean;
 }
 
-const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: ComplaintCardProps) => {
+const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange, isHighlighted }: ComplaintCardProps) => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   
+  // Local State for Instant UI Updates
+  const [status, setStatus] = useState<Status>(complaint.status); // <--- THE FIX
   const [optimisticScore, setOptimisticScore] = useState(complaint.score);
   const [optimisticVote, setOptimisticVote] = useState(userVote?.vote_type || null);
   const [voting, setVoting] = useState(false);
@@ -64,8 +66,20 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
   
   const isAdmin = profile?.role === 'admin';
   const isOwner = user?.id === complaint.user_id;
-  const isEditable = isOwner && complaint.status === 'Open';
+  const isEditable = isOwner && status === 'Open';
   const wasEdited = complaint.updated_at && complaint.updated_at !== complaint.created_at;
+
+  // Sync state when props change (e.g. from Realtime)
+  useEffect(() => {
+    setStatus(complaint.status);
+    setOptimisticScore(complaint.score);
+  }, [complaint.status, complaint.score]);
+
+  // Handler for Admin Actions to update local state instantly
+  const handleLocalStatusChange = (newStatus: Status) => {
+    setStatus(newStatus);
+    onStatusChange?.(); // Trigger background refresh
+  };
 
   const handleVote = async (e: React.MouseEvent, voteType: 'like' | 'dislike') => {
     e.preventDefault();
@@ -138,6 +152,7 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
         variant: "destructive"
       });
     } else {
+      // Notify Admin
       const { data: admins } = await supabase
         .from('profiles')
         .select('id')
@@ -167,7 +182,8 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
         id={`complaint-${complaint.id}`}
         className={cn(
           "glass-card p-6 space-y-4 animate-fade-in transition-all duration-500",
-          complaint.status === 'In_Progress' && "border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.1)]"
+          status === 'In_Progress' && "border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.1)]",
+          isHighlighted && "ring-2 ring-blue-500 bg-blue-500/5"
         )}
       >
         <div className="flex items-start justify-between gap-4">
@@ -176,8 +192,9 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
               <Badge className={cn('text-xs', getCategoryClass(complaint.category))}>
                 {complaint.category}
               </Badge>
-              <Badge variant="outline" className={cn('text-xs', getStatusClass(complaint.status))}>
-                {getStatusLabel(complaint.status)}
+              {/* USE LOCAL STATUS HERE FOR INSTANT UPDATE */}
+              <Badge variant="outline" className={cn('text-xs', getStatusClass(status))}>
+                {getStatusLabel(status)}
               </Badge>
               {wasEdited && (
                 <span className="text-[10px] text-muted-foreground bg-secondary/50 px-1.5 py-0.5 rounded flex items-center gap-1">
@@ -207,7 +224,7 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
         </div>
 
         {/* FEEDBACK SECTION */}
-        {complaint.status === 'Resolved' && (
+        {status === 'Resolved' && (
           <div className="space-y-3 pt-2 animate-in slide-in-from-top-2">
             {complaint.admin_remark && (
               <div className="bg-zinc-900/50 border border-green-900/30 rounded-lg p-3">
@@ -344,12 +361,16 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
           </div>
         </div>
 
-        {isAdmin && complaint.status !== 'Resolved' && (
-          <AdminActions complaint={complaint} onStatusChange={onStatusChange} />
+        {isAdmin && status !== 'Resolved' && (
+          <AdminActions 
+            complaint={{...complaint, status}} // Pass current local status
+            onStatusChange={handleLocalStatusChange} 
+          />
         )}
       </div>
 
       {isEditable && <EditComplaintDialog complaint={complaint} open={isEditOpen} onOpenChange={setIsEditOpen} onComplaintUpdated={() => onStatusChange?.()} />}
+      
       {isImageModalOpen && complaint.image_url && (
         <div className="fixed inset-0 z-[150] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setIsImageModalOpen(false)}>
           <button onClick={() => setIsImageModalOpen(false)} className="absolute top-4 right-4 p-2 bg-secondary/50 rounded-full text-foreground hover:bg-secondary transition-colors">
