@@ -50,19 +50,22 @@ const AdminActions = ({ complaint, onStatusChange }: AdminActionsProps) => {
         variant: 'destructive'
       });
     } else {
-      // NOTIFY THE STUDENT
+      // Create notification for user
+      const statusMsg = newStatus === 'In_Progress' ? 'In Progress' : 'Resolved';
+      
       await supabase.from('notifications').insert({
         user_id: complaint.user_id,
         type: 'status_change',
-        message: `Your complaint "${complaint.title}" is now ${newStatus.replace('_', ' ')}`,
+        message: `Update: Your complaint "${complaint.title}" is now ${statusMsg}.`,
         complaint_id: complaint.id
       });
 
       toast({
-        title: 'Status updated',
-        description: `Complaint is now ${newStatus === 'In_Progress' ? 'in progress' : 'resolved'}`
+        title: 'Status Updated',
+        description: `Complaint marked as ${statusMsg}`
       });
       
+      // Trigger refresh in parent component immediately
       onStatusChange?.();
     }
 
@@ -74,7 +77,7 @@ const AdminActions = ({ complaint, onStatusChange }: AdminActionsProps) => {
   return (
     <>
       <div className="flex gap-2 pt-2">
-        {/* 1. Start Progress Button */}
+        {/* Start Progress Button */}
         {complaint.status === 'Open' && (
           <Button
             type="button"
@@ -93,7 +96,7 @@ const AdminActions = ({ complaint, onStatusChange }: AdminActionsProps) => {
           </Button>
         )}
         
-        {/* 2. Resolve Button (Only appears after In_Progress) */}
+        {/* Mark Resolved Button (Only visible if In_Progress) */}
         {complaint.status === 'In_Progress' && (
           <Button
             type="button"
@@ -113,27 +116,27 @@ const AdminActions = ({ complaint, onStatusChange }: AdminActionsProps) => {
         )}
       </div>
 
-      {/* Resolution Remark Modal */}
+      {/* Admin Remark Modal */}
       <Dialog open={showRemarkDialog} onOpenChange={setShowRemarkDialog}>
-        <DialogContent className="bg-[#09090b] border-zinc-800 text-white">
+        <DialogContent className="bg-[#09090b] border-zinc-800 text-white sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Resolution Remark</DialogTitle>
+            <DialogTitle>Resolution Message</DialogTitle>
             <DialogDescription className="text-zinc-400">
-              Add a remark about how this issue was resolved.
+              Send a message to the student explaining the solution.
             </DialogDescription>
           </DialogHeader>
           <Textarea
-            placeholder="Enter your remark..."
+            placeholder="e.g., Technician visited and replaced the router."
             value={remark}
             onChange={(e) => setRemark(e.target.value)}
-            className="bg-[#18181b] border-zinc-800 text-white focus-visible:ring-zinc-700 min-h-[100px]"
+            className="bg-[#18181b] border-zinc-800 text-white focus-visible:ring-zinc-700 min-h-[120px]"
           />
           <DialogFooter>
             <Button variant="ghost" onClick={() => setShowRemarkDialog(false)} className="text-zinc-400 hover:text-white">
               Cancel
             </Button>
-            <Button onClick={() => updateStatus('Resolved', remark)} disabled={loading} className="bg-white text-black hover:bg-zinc-200">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Submit'}
+            <Button onClick={() => updateStatus('Resolved', remark)} disabled={loading} className="bg-white text-black hover:bg-zinc-200 font-bold">
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'MARK RESOLVED'}
             </Button>
           </DialogFooter>
         </DialogContent>
