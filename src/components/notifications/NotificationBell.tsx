@@ -34,7 +34,7 @@ const NotificationBell = () => {
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-      .limit(20); // Limit to last 20 notifications
+      .limit(20);
 
     if (data) {
       setNotifications(data as Notification[]);
@@ -47,7 +47,6 @@ const NotificationBell = () => {
 
     fetchNotifications();
 
-    // Real-time subscription for new notifications
     const channel = supabase
       .channel('realtime-notifications')
       .on(
@@ -59,7 +58,6 @@ const NotificationBell = () => {
           filter: `user_id=eq.${user.id}`
         },
         (payload) => {
-          // When a new notification arrives, add it to the list and increment count
           const newNotification = payload.new as Notification;
           setNotifications(prev => [newNotification, ...prev]);
           setUnreadCount(prev => prev + 1);
@@ -73,20 +71,19 @@ const NotificationBell = () => {
   }, [user]);
 
   const markAsRead = async (id: string, complaintId: string | null) => {
-    // 1. Update database
     await supabase
       .from('notifications')
       .update({ read: true })
       .eq('id', id);
 
-    // 2. Update local state
     setNotifications(prev => 
       prev.map(n => n.id === id ? { ...n, read: true } : n)
     );
     setUnreadCount(prev => Math.max(0, prev - 1));
 
-    // 3. Navigate to the complaint
     if (complaintId) {
+      // Navigate to the correct page where the card exists
+      // Usually Dashboard for most cases, unless it's history
       navigate('/dashboard', { state: { scrollTo: complaintId } });
     }
   };
@@ -96,8 +93,6 @@ const NotificationBell = () => {
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative hover:bg-zinc-800">
           <Bell className="w-5 h-5 text-muted-foreground hover:text-white transition-colors" />
-          
-          {/* RED BADGE WITH NUMBER */}
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 min-w-[1.25rem] h-5 bg-red-600 text-white text-[10px] rounded-full flex items-center justify-center font-bold px-1 border-2 border-black animate-in zoom-in duration-300">
               {unreadCount}
