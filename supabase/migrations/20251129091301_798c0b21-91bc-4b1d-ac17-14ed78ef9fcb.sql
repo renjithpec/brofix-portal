@@ -163,6 +163,7 @@ CREATE POLICY "Authenticated users can upload complaint images" ON storage.objec
 ALTER PUBLICATION supabase_realtime ADD TABLE public.complaints;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
 
+-- MANUAL FIX: Ensure admins have the correct role if the trigger failed previously
 UPDATE public.profiles 
 SET role = 'admin' 
 WHERE email IN (
@@ -173,6 +174,3 @@ WHERE email IN (
   'admin.cbe@brototype.com', 
   'admin.tvm@brototype.com'
 );
-UPDATE public.profiles 
-SET role = 'admin' 
-WHERE email = 'admin.kochi@brototype.com';
