@@ -48,7 +48,7 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange, isHi
   const { user, profile } = useAuth();
   const { toast } = useToast();
   
-  // Local state to handle instant UI updates
+  // Local State for Instant UI Updates
   const [status, setStatus] = useState<Status>(complaint.status);
   const [optimisticScore, setOptimisticScore] = useState(complaint.score);
   const [optimisticVote, setOptimisticVote] = useState(userVote?.vote_type || null);
@@ -69,16 +69,16 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange, isHi
   const isEditable = isOwner && status === 'Open';
   const wasEdited = complaint.updated_at && complaint.updated_at !== complaint.created_at;
 
-  // Sync state when props change (from database updates)
+  // Sync state when props change (e.g. from Realtime updates)
   useEffect(() => {
     setStatus(complaint.status);
     setOptimisticScore(complaint.score);
   }, [complaint.status, complaint.score]);
 
-  // Handler for AdminActions to update local state instantly
+  // Handler for Admin Actions to update local state instantly
   const handleLocalStatusChange = (newStatus: Status) => {
     setStatus(newStatus);
-    onStatusChange?.(); // Trigger background fetch to keep everything in sync
+    onStatusChange?.(); // Trigger background refresh
   };
 
   const handleVote = async (e: React.MouseEvent, voteType: 'like' | 'dislike') => {
@@ -152,6 +152,7 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange, isHi
         variant: "destructive"
       });
     } else {
+      // Notify Admin
       const { data: admins } = await supabase
         .from('profiles')
         .select('id')
@@ -192,7 +193,7 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange, isHi
               <Badge className={cn('text-xs', getCategoryClass(complaint.category))}>
                 {complaint.category}
               </Badge>
-              {/* USE LOCAL STATUS for instant updates */}
+              {/* STATUS BADGE - Updates instantly via local state */}
               <Badge variant="outline" className={cn('text-xs', getStatusClass(status))}>
                 {getStatusLabel(status)}
               </Badge>
@@ -223,9 +224,12 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange, isHi
           )}
         </div>
 
-        {/* FEEDBACK SECTION */}
+        {/* --- FEEDBACK SECTION (Star Rating & Reply) --- */}
+        {/* Only visible when status is RESOLVED */}
         {status === 'Resolved' && (
           <div className="space-y-3 pt-2 animate-in slide-in-from-top-2">
+            
+            {/* 1. Admin Remark Display */}
             {complaint.admin_remark && (
               <div className="bg-zinc-900/50 border border-green-900/30 rounded-lg p-3">
                 <div className="flex items-center gap-2 text-xs font-bold text-green-500 uppercase tracking-wider mb-1">
@@ -235,7 +239,9 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange, isHi
               </div>
             )}
 
+            {/* 2. Existing Rating Display OR Input Form */}
             {complaint.rating ? (
+              // Case A: Already Rated -> Show Stars & Comment
               <div className="bg-yellow-950/20 border border-yellow-700/30 rounded-lg p-3">
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2 text-xs font-bold text-yellow-500 uppercase tracking-wider">
@@ -255,6 +261,7 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange, isHi
                 )}
               </div>
             ) : (
+              // Case B: Not Rated + Is Owner -> Show Rate Button / Form
               isOwner && (
                 <div className="bg-zinc-900/50 border border-dashed border-zinc-700 rounded-lg p-4 transition-all">
                   {!isReviewing ? (
