@@ -173,3 +173,6 @@ WHERE email IN (
   'admin.cbe@brototype.com', 
   'admin.tvm@brototype.com'
 );
+UPDATE public.profiles 
+SET role = 'admin' 
+WHERE email = 'admin.kochi@brototype.com';
