@@ -68,8 +68,31 @@ const History = () => {
   };
 
   useEffect(() => {
+    if (!user) return;
+
     fetchComplaints();
     fetchVotes();
+
+    // --- REALTIME SUBSCRIPTION ADDED HERE ---
+    const channel = supabase
+      .channel('history-complaints-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'complaints'
+        },
+        () => {
+          // Re-fetch data when a change is detected
+          fetchComplaints();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const filteredComplaints = complaints.filter(complaint => {
@@ -81,7 +104,7 @@ const History = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">My History</h1>
@@ -122,6 +145,8 @@ const History = () => {
               complaint={complaint}
               userVote={getUserVote(complaint.id)}
               onVoteChange={fetchVotes}
+              // Pass the fetch function so checking it internally triggers a refresh too
+              onStatusChange={fetchComplaints} 
             />
           ))}
         </div>
