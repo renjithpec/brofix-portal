@@ -21,21 +21,14 @@ interface AdminActionsProps {
     title: string;
     status: Status;
   };
-  onStatusChange?: () => void;
+  onStatusChange?: (newStatus: Status) => void; // Updated signature
 }
 
 const AdminActions = ({ complaint, onStatusChange }: AdminActionsProps) => {
   const [loading, setLoading] = useState(false);
   const [showRemarkDialog, setShowRemarkDialog] = useState(false);
   const [remark, setRemark] = useState('');
-  // THE FIX: Local state to force immediate UI update
-  const [currentStatus, setCurrentStatus] = useState<Status>(complaint.status);
   const { toast } = useToast();
-
-  // Sync local state if props change
-  useEffect(() => {
-    setCurrentStatus(complaint.status);
-  }, [complaint.status]);
 
   const updateStatus = async (newStatus: Status, adminRemark?: string) => {
     setLoading(true);
@@ -57,8 +50,9 @@ const AdminActions = ({ complaint, onStatusChange }: AdminActionsProps) => {
         variant: 'destructive'
       });
     } else {
-      // 1. Send Notification to Student
+      // Create notification for user
       const statusMsg = newStatus === 'In_Progress' ? 'In Progress' : 'Resolved';
+      
       await supabase.from('notifications').insert({
         user_id: complaint.user_id,
         type: 'status_change',
@@ -71,11 +65,8 @@ const AdminActions = ({ complaint, onStatusChange }: AdminActionsProps) => {
         description: `Complaint marked as ${statusMsg}`
       });
       
-      // 2. IMMEDIATE UI UPDATE (Optimistic)
-      setCurrentStatus(newStatus);
-      
-      // 3. Trigger background refresh
-      onStatusChange?.();
+      // Update parent instantly with new status
+      onStatusChange?.(newStatus);
     }
 
     setLoading(false);
@@ -86,13 +77,12 @@ const AdminActions = ({ complaint, onStatusChange }: AdminActionsProps) => {
   return (
     <>
       <div className="flex gap-2 pt-2">
-        {/* Render based on currentStatus instead of props for instant feedback */}
-        {currentStatus === 'Open' && (
+        {complaint.status === 'Open' && (
           <Button
             type="button"
             onClick={() => updateStatus('In_Progress')}
             disabled={loading}
-            className="flex-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-600/30 transition-all"
+            className="flex-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-600/30"
           >
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -105,12 +95,12 @@ const AdminActions = ({ complaint, onStatusChange }: AdminActionsProps) => {
           </Button>
         )}
         
-        {currentStatus === 'In_Progress' && (
+        {complaint.status === 'In_Progress' && (
           <Button
             type="button"
             onClick={() => setShowRemarkDialog(true)}
             disabled={loading}
-            className="flex-1 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-600/30 transition-all animate-in fade-in"
+            className="flex-1 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-600/30"
           >
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -124,7 +114,6 @@ const AdminActions = ({ complaint, onStatusChange }: AdminActionsProps) => {
         )}
       </div>
 
-      {/* Resolution Modal */}
       <Dialog open={showRemarkDialog} onOpenChange={setShowRemarkDialog}>
         <DialogContent className="bg-[#09090b] border-zinc-800 text-white sm:max-w-[500px]">
           <DialogHeader>
