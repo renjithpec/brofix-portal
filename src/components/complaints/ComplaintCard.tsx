@@ -49,7 +49,7 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange, isHi
   const { toast } = useToast();
   
   // Local State for Instant UI Updates
-  const [status, setStatus] = useState<Status>(complaint.status); // <--- THE FIX
+  const [status, setStatus] = useState<Status>(complaint.status);
   const [optimisticScore, setOptimisticScore] = useState(complaint.score);
   const [optimisticVote, setOptimisticVote] = useState(userVote?.vote_type || null);
   const [voting, setVoting] = useState(false);
@@ -69,7 +69,7 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange, isHi
   const isEditable = isOwner && status === 'Open';
   const wasEdited = complaint.updated_at && complaint.updated_at !== complaint.created_at;
 
-  // Sync state when props change (e.g. from Realtime)
+  // Sync state when props change (from Realtime)
   useEffect(() => {
     setStatus(complaint.status);
     setOptimisticScore(complaint.score);
@@ -183,6 +183,7 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange, isHi
         className={cn(
           "glass-card p-6 space-y-4 animate-fade-in transition-all duration-500",
           status === 'In_Progress' && "border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.1)]",
+          status === 'Resolved' && "border-green-500/30",
           isHighlighted && "ring-2 ring-blue-500 bg-blue-500/5"
         )}
       >
