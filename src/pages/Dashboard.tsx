@@ -79,7 +79,7 @@ const Dashboard = () => {
     fetchVotes();
 
     const channel = supabase
-      .channel('complaints-changes')
+      .channel('dashboard-complaints-changes')
       .on(
         'postgres_changes',
         {
