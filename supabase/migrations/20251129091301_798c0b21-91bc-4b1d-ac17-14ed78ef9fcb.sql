@@ -162,3 +162,14 @@ CREATE POLICY "Authenticated users can upload complaint images" ON storage.objec
 
 ALTER PUBLICATION supabase_realtime ADD TABLE public.complaints;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+
+UPDATE public.profiles 
+SET role = 'admin' 
+WHERE email IN (
+  'admin.kochi@brototype.com', 
+  'admin.blr@brototype.com', 
+  'admin.clt@brototype.com', 
+  'admin.chn@brototype.com', 
+  'admin.cbe@brototype.com', 
+  'admin.tvm@brototype.com'
+);
