@@ -48,7 +48,7 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange, isHi
   const { user, profile } = useAuth();
   const { toast } = useToast();
   
-  // Local State for Instant UI Updates
+  // Local state to handle instant UI updates
   const [status, setStatus] = useState<Status>(complaint.status);
   const [optimisticScore, setOptimisticScore] = useState(complaint.score);
   const [optimisticVote, setOptimisticVote] = useState(userVote?.vote_type || null);
@@ -69,16 +69,16 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange, isHi
   const isEditable = isOwner && status === 'Open';
   const wasEdited = complaint.updated_at && complaint.updated_at !== complaint.created_at;
 
-  // Sync state when props change (from Realtime)
+  // Sync state when props change (from database updates)
   useEffect(() => {
     setStatus(complaint.status);
     setOptimisticScore(complaint.score);
   }, [complaint.status, complaint.score]);
 
-  // Handler for Admin Actions to update local state instantly
+  // Handler for AdminActions to update local state instantly
   const handleLocalStatusChange = (newStatus: Status) => {
     setStatus(newStatus);
-    onStatusChange?.(); // Trigger background refresh
+    onStatusChange?.(); // Trigger background fetch to keep everything in sync
   };
 
   const handleVote = async (e: React.MouseEvent, voteType: 'like' | 'dislike') => {
@@ -152,7 +152,6 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange, isHi
         variant: "destructive"
       });
     } else {
-      // Notify Admin
       const { data: admins } = await supabase
         .from('profiles')
         .select('id')
@@ -193,7 +192,7 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange, isHi
               <Badge className={cn('text-xs', getCategoryClass(complaint.category))}>
                 {complaint.category}
               </Badge>
-              {/* USE LOCAL STATUS HERE FOR INSTANT UPDATE */}
+              {/* USE LOCAL STATUS for instant updates */}
               <Badge variant="outline" className={cn('text-xs', getStatusClass(status))}>
                 {getStatusLabel(status)}
               </Badge>
@@ -364,7 +363,7 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange, isHi
 
         {isAdmin && status !== 'Resolved' && (
           <AdminActions 
-            complaint={{...complaint, status}} // Pass current local status
+            complaint={{...complaint, status}} 
             onStatusChange={handleLocalStatusChange} 
           />
         )}
