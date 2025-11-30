@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FluidBackground from '@/components/FluidBackground';
 import Logo from '@/components/Logo';
+import AuthTabs from '@/components/auth/AuthTabs';
 import LoginForm from '@/components/auth/LoginForm';
 import SignupForm from '@/components/auth/SignupForm';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Auth = () => {
+  const [activeTab, setActiveTab] = useState<'student' | 'admin'>('student');
   const [isSignup, setIsSignup] = useState(false);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -34,15 +36,23 @@ const Auth = () => {
         <Logo showSubtitle showPortal size="lg" />
 
         <div className="glass-card p-8 space-y-6">
-          {/* Removed AuthTabs to hide Admin Access tab */}
-          
-          {isSignup ? (
-            <SignupForm onToggleLogin={() => setIsSignup(false)} />
+          <AuthTabs activeTab={activeTab} onTabChange={(tab) => {
+            setActiveTab(tab);
+            setIsSignup(false);
+          }} />
+
+          {activeTab === 'student' ? (
+            isSignup ? (
+              <SignupForm onToggleLogin={() => setIsSignup(false)} />
+            ) : (
+              <LoginForm 
+                isAdmin={false} 
+                onToggleSignup={() => setIsSignup(true)} 
+              />
+            )
           ) : (
-            <LoginForm 
-              isAdmin={false} // Default to standard login view
-              onToggleSignup={() => setIsSignup(true)} 
-            />
+            // Admin Tab - No Signup Option
+            <LoginForm isAdmin={true} />
           )}
         </div>
       </div>
