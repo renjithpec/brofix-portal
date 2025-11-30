@@ -20,6 +20,7 @@ type Complaint = {
   review_comment: string | null;
   admin_remark: string | null;
   created_at: string;
+  updated_at: string;
   profiles: {
     full_name: string;
   } | null;

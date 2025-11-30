@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { SUPER_ADMIN_EMAIL } from '@/lib/constants';
 
 type Profile = {
   id: string;
@@ -20,9 +21,20 @@ type AuthContextType = {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   isSuperAdmin: boolean;
+  refreshProfile: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Admin emails that should always be forced to admin role
+const FORCED_ADMIN_EMAILS = [
+  'admin.kochi@brototype.com',
+  'admin.blr@brototype.com',
+  'admin.clt@brototype.com',
+  'admin.chn@brototype.com',
+  'admin.cbe@brototype.com',
+  'admin.tvm@brototype.com'
+];
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -30,7 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -38,34 +50,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .single();
     
     if (!error && data) {
-      // --- FORCE ADMIN ROLE FIX (The "God Mode" Patch) ---
-      // This forces your specific email to ALWAYS be an Admin, fixing the "Student" bug.
-      const forcedAdminEmails = [
-        'admin.kochi@brototype.com',
-        'admin.blr@brototype.com',
-        'admin.clt@brototype.com',
-        'admin.chn@brototype.com',
-        'admin.cbe@brototype.com',
-        'admin.tvm@brototype.com'
-      ];
-
-      // Create a copy of the profile data
       const finalProfile = { ...data } as Profile;
       
-      if (data.email && forcedAdminEmails.includes(data.email)) {
-        console.log("Force-promoting user to Admin:", data.email); // Debug log
+      // Force admin role for predefined admin emails
+      if (data.email && FORCED_ADMIN_EMAILS.includes(data.email)) {
         finalProfile.role = 'admin';
         
-        // Force correct branch for Super Admin
-        if (data.email === 'admin.kochi@brototype.com') {
-           finalProfile.branch = 'Kochi';
+        // Force Kochi branch for Super Admin
+        if (data.email === SUPER_ADMIN_EMAIL) {
+          finalProfile.branch = 'Kochi';
         }
       }
-      // ---------------------------------------------------
 
       setProfile(finalProfile);
     }
-  };
+  }, []);
+
+  const refreshProfile = useCallback(async () => {
+    if (user?.id) {
+      await fetchProfile(user.id);
+    }
+  }, [user?.id, fetchProfile]);
 
   useEffect(() => {
     supabase.auth.onAuthStateChange((event, session) => {
@@ -73,7 +78,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        // Small delay to ensure DB trigger has finished writing the profile
         setTimeout(() => {
           fetchProfile(session.user.id);
         }, 500);
@@ -94,7 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setLoading(false);
     });
-  }, []);
+  }, [fetchProfile]);
 
   const signUp = async (email: string, password: string, fullName: string, branch: string, role: 'student' | 'admin' = 'student') => {
     const redirectUrl = `${window.location.origin}/`;
@@ -131,7 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setProfile(null);
   };
 
-  const isSuperAdmin = profile?.email === 'admin.kochi@brototype.com';
+  const isSuperAdmin = profile?.email === SUPER_ADMIN_EMAIL;
 
   return (
     <AuthContext.Provider value={{ 
@@ -142,7 +146,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signUp, 
       signIn, 
       signOut,
-      isSuperAdmin
+      isSuperAdmin,
+      refreshProfile
     }}>
       {children}
     </AuthContext.Provider>
