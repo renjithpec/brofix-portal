@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ThumbsUp, ThumbsDown, Clock, User, Pencil, ZoomIn, X, Star, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import AdminActions from './AdminActions';
 import EditComplaintDialog from './EditComplaintDialog';
 
+// Define types locally if not imported
 type Complaint = {
   id: string;
   user_id: string;
@@ -54,7 +55,7 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
-  // Rating State
+  // Review State
   const [isReviewing, setIsReviewing] = useState(false);
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -137,7 +138,6 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
         variant: "destructive"
       });
     } else {
-      // Notify Branch Admins
       const { data: admins } = await supabase
         .from('profiles')
         .select('id')
@@ -148,7 +148,7 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
         const notifications = admins.map(admin => ({
           user_id: admin.id,
           type: 'review_received',
-          message: `⭐ New ${rating}-star rating for "${complaint.title}"`,
+          message: `⭐ Student rated "${complaint.title}": ${rating} Stars`,
           complaint_id: complaint.id
         }));
         await supabase.from('notifications').insert(notifications);
@@ -206,11 +206,9 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
           )}
         </div>
 
-        {/* --- FEEDBACK LOOP SECTION --- */}
+        {/* FEEDBACK SECTION */}
         {complaint.status === 'Resolved' && (
           <div className="space-y-3 pt-2 animate-in slide-in-from-top-2">
-            
-            {/* 1. Admin Remark */}
             {complaint.admin_remark && (
               <div className="bg-zinc-900/50 border border-green-900/30 rounded-lg p-3">
                 <div className="flex items-center gap-2 text-xs font-bold text-green-500 uppercase tracking-wider mb-1">
@@ -220,7 +218,6 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
               </div>
             )}
 
-            {/* 2. Show Rating (if exists) OR Show Rating Form (if owner) */}
             {complaint.rating ? (
               <div className="bg-yellow-950/20 border border-yellow-700/30 rounded-lg p-3">
                 <div className="flex items-center justify-between mb-1">
@@ -302,32 +299,19 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1">
               <Button 
-                type="button"
-                variant="ghost" 
-                size="sm" 
-                className={cn(
-                  'h-8 px-2',
-                  optimisticVote === 'like' && 'text-emerald-400 bg-emerald-400/10'
-                )}
+                type="button" variant="ghost" size="sm" 
+                className={cn('h-8 px-2', optimisticVote === 'like' && 'text-emerald-400 bg-emerald-400/10')}
                 onClick={(e) => handleVote(e, 'like')}
                 disabled={voting}
               >
                 <ThumbsUp className="w-4 h-4" />
               </Button>
-              <span className={cn(
-                'text-sm font-medium min-w-[2rem] text-center',
-                optimisticScore > 0 ? 'text-emerald-400' : optimisticScore < 0 ? 'text-destructive' : 'text-muted-foreground'
-              )}>
+              <span className={cn('text-sm font-medium min-w-[2rem] text-center', optimisticScore > 0 ? 'text-emerald-400' : optimisticScore < 0 ? 'text-destructive' : 'text-muted-foreground')}>
                 {optimisticScore}
               </span>
               <Button 
-                type="button"
-                variant="ghost" 
-                size="sm" 
-                className={cn(
-                  'h-8 px-2',
-                  optimisticVote === 'dislike' && 'text-destructive bg-destructive/10'
-                )}
+                type="button" variant="ghost" size="sm" 
+                className={cn('h-8 px-2', optimisticVote === 'dislike' && 'text-destructive bg-destructive/10')}
                 onClick={(e) => handleVote(e, 'dislike')}
                 disabled={voting}
               >
@@ -365,32 +349,13 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
         )}
       </div>
 
-      {isEditable && (
-        <EditComplaintDialog 
-          complaint={complaint}
-          open={isEditOpen}
-          onOpenChange={setIsEditOpen}
-          onComplaintUpdated={() => onStatusChange?.()} 
-        />
-      )}
-
+      {isEditable && <EditComplaintDialog complaint={complaint} open={isEditOpen} onOpenChange={setIsEditOpen} onComplaintUpdated={() => onStatusChange?.()} />}
       {isImageModalOpen && complaint.image_url && (
-        <div 
-          className="fixed inset-0 z-[150] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={() => setIsImageModalOpen(false)}
-        >
-          <button 
-            onClick={() => setIsImageModalOpen(false)}
-            className="absolute top-4 right-4 p-2 bg-secondary/50 rounded-full text-foreground hover:bg-secondary transition-colors"
-          >
+        <div className="fixed inset-0 z-[150] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setIsImageModalOpen(false)}>
+          <button onClick={() => setIsImageModalOpen(false)} className="absolute top-4 right-4 p-2 bg-secondary/50 rounded-full text-foreground hover:bg-secondary transition-colors">
             <X size={24} />
           </button>
-          <img 
-            src={complaint.image_url} 
-            alt="Full Evidence" 
-            className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" 
-            onClick={(e) => e.stopPropagation()}
-          />
+          <img src={complaint.image_url} alt="Full Evidence" className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
         </div>
       )}
     </>
