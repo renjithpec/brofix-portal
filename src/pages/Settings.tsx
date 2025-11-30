@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { User, Lock, Mail, Camera, Loader2, MapPin } from 'lucide-react';
+import { User, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { BRANCHES, Branch } from '@/lib/constants';
 
 const Settings = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile, isSuperAdmin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [uploadProgress, setProgress] = useState(0);
@@ -19,12 +19,33 @@ const Settings = () => {
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  useEffect(() => { if (profile) { setFullName(profile.full_name || ''); setBranch(profile.branch || ''); } }, [profile]);
+  useEffect(() => { 
+    if (profile) { 
+      setFullName(profile.full_name || ''); 
+      setBranch(profile.branch || ''); 
+    } 
+  }, [profile]);
 
   const updateProfile = async (e: React.FormEvent) => {
-    e.preventDefault(); setLoading(true);
-    const { error } = await supabase.from('profiles').update({ full_name: fullName, branch }).eq('id', user?.id);
-    toast({ title: error ? 'Error' : 'Success', description: error ? error.message : 'Profile updated.', variant: error ? 'destructive' : 'default' });
+    e.preventDefault(); 
+    setLoading(true);
+    
+    const updates: { full_name?: string; branch?: string } = { full_name: fullName };
+    
+    // Super admin cannot change branch (locked to Kochi)
+    if (!isSuperAdmin) {
+      updates.branch = branch;
+    }
+    
+    const { error } = await supabase.from('profiles').update(updates).eq('id', user?.id);
+    
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Success', description: 'Profile updated.' });
+      // Refresh the profile in context so changes reflect everywhere
+      await refreshProfile();
+    }
     setLoading(false);
   };
 
@@ -54,11 +75,13 @@ const Settings = () => {
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
       await supabase.from('profiles').update({ avatar_url: `${publicUrl}?t=${Date.now()}` }).eq('id', user.id);
       toast({ title: 'Success', description: 'Avatar updated.' });
-      setTimeout(() => window.location.reload(), 500);
+      await refreshProfile();
+      setTimeout(() => setAvatarLoading(false), 500);
     } else {
+      clearInterval(interval);
       toast({ title: 'Error', description: 'Upload failed.', variant: 'destructive' });
+      setAvatarLoading(false);
     }
-    setAvatarLoading(false);
   };
 
   return (
@@ -75,7 +98,7 @@ const Settings = () => {
           </div>
           {!avatarLoading && <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100"><Camera className="text-white w-8 h-8"/></div>}
         </div>
-        <div><h3 className="font-medium text-white">Profile Photo</h3><p className="text-sm text-zinc-400 mb-3">Click to upload.</p><input type="file" ref={fileRef} className="hidden" onChange={updateAvatar} /></div>
+        <div><h3 className="font-medium text-white">Profile Photo</h3><p className="text-sm text-zinc-400 mb-3">Click to upload.</p><input type="file" ref={fileRef} className="hidden" accept="image/*" onChange={updateAvatar} /></div>
       </div>
 
       {/* Details */}
@@ -83,9 +106,19 @@ const Settings = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div><label className="text-xs font-bold text-zinc-500 uppercase">Full Name</label><Input value={fullName} onChange={e => setFullName(e.target.value)} className="bg-zinc-900/50 border-zinc-700 text-white" /></div>
           <div><label className="text-xs font-bold text-zinc-500 uppercase">Email</label><Input value={profile?.email || ''} disabled className="bg-zinc-900/50 border-zinc-700 text-white opacity-50" /></div>
-          <div className="md:col-span-2"><label className="text-xs font-bold text-zinc-500 uppercase">Branch</label><Select value={branch} onValueChange={v => setBranch(v)}><SelectTrigger className="bg-zinc-900/50 border-zinc-700 text-white"><SelectValue/></SelectTrigger><SelectContent className="bg-zinc-900 border-zinc-700 text-white">{BRANCHES.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent></Select></div>
+          <div className="md:col-span-2">
+            <label className="text-xs font-bold text-zinc-500 uppercase">Branch</label>
+            {isSuperAdmin ? (
+              <Input value="Kochi" disabled className="bg-zinc-900/50 border-zinc-700 text-white opacity-50" />
+            ) : (
+              <Select value={branch} onValueChange={v => setBranch(v)}>
+                <SelectTrigger className="bg-zinc-900/50 border-zinc-700 text-white"><SelectValue/></SelectTrigger>
+                <SelectContent className="bg-zinc-900 border-zinc-700 text-white">{BRANCHES.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
+              </Select>
+            )}
+          </div>
         </div>
-        <div className="flex justify-end"><Button type="submit" disabled={loading} className="bg-white text-black hover:bg-zinc-200">Save Changes</Button></div>
+        <div className="flex justify-end"><Button type="submit" disabled={loading} className="bg-white text-black hover:bg-zinc-200">{loading ? 'Saving...' : 'Save Changes'}</Button></div>
       </form></div>
 
       {/* Password */}

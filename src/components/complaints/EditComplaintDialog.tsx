@@ -53,15 +53,26 @@ const EditComplaintDialog = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!title.trim() || !description.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please fill in all required fields',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
     setLoading(true);
 
     const { error } = await supabase
       .from('complaints')
       .update({
-        title,
-        description,
+        title: title.trim(),
+        description: description.trim(),
         category,
-        image_url: imageUrl
+        image_url: imageUrl,
+        updated_at: new Date().toISOString()
       })
       .eq('id', complaint.id);
 

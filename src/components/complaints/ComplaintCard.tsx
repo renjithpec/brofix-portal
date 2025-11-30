@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ThumbsUp, ThumbsDown, Clock, User, Pencil, ZoomIn, X, Star, ShieldCheck } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ThumbsUp, ThumbsDown, Clock, User, Pencil, X, Star, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,9 +17,9 @@ type Complaint = {
   created_at: string; updated_at: string; profiles?: { full_name: string; };
 };
 type Vote = { id: string; vote_type: 'like' | 'dislike'; };
-interface ComplaintCardProps { complaint: Complaint; userVote: Vote | null; onVoteChange: () => void; onStatusChange?: () => void; }
+interface ComplaintCardProps { complaint: Complaint; userVote: Vote | null; onVoteChange: () => void; onStatusChange?: () => void; isHighlighted?: boolean; }
 
-const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: ComplaintCardProps) => {
+const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange, isHighlighted }: ComplaintCardProps) => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const [optimisticScore, setScore] = useState(complaint.score);
@@ -32,10 +32,26 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
   const [hoverRating, setHoverRating] = useState(0);
   const [reviewComment, setReviewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [highlighted, setHighlighted] = useState(isHighlighted);
 
   const isAdmin = profile?.role === 'admin';
   const isOwner = user?.id === complaint.user_id;
   const isEditable = isOwner && complaint.status === 'Open';
+
+  // Handle highlight animation
+  useEffect(() => {
+    if (isHighlighted) {
+      setHighlighted(true);
+      const timer = setTimeout(() => setHighlighted(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isHighlighted]);
+
+  // Update optimistic state when props change
+  useEffect(() => {
+    setScore(complaint.score);
+    setVote(userVote?.vote_type || null);
+  }, [complaint.score, userVote]);
 
   const handleVote = async (e: React.MouseEvent, type: 'like' | 'dislike') => {
     e.preventDefault(); e.stopPropagation();
@@ -76,9 +92,16 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
     setSubmittingReview(false);
   };
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
+  const wasEdited = complaint.updated_at && complaint.created_at !== complaint.updated_at;
+
   return (
     <>
-      <div id={`complaint-${complaint.id}`} className={cn("glass-card p-6 space-y-4 animate-fade-in", complaint.status === 'In_Progress' && "border-blue-500/30")}>
+      <div id={`complaint-${complaint.id}`} className={cn("glass-card p-6 space-y-4 animate-fade-in transition-all duration-500", complaint.status === 'In_Progress' && "border-blue-500/30", highlighted && "ring-2 ring-blue-500 bg-blue-500/10")}>
         <div className="flex justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2"><Badge className={getCategoryClass(complaint.category)}>{complaint.category}</Badge><Badge variant="outline" className={getStatusClass(complaint.status)}>{getStatusLabel(complaint.status)}</Badge></div>
@@ -115,14 +138,18 @@ const ComplaintCard = ({ complaint, userVote, onVoteChange, onStatusChange }: Co
 
         <div className="flex justify-between pt-2 border-t border-zinc-800">
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={e => handleVote(e, 'like')} className={cn(optimisticVote === 'like' && 'text-emerald-400')}><ThumbsUp className="w-4 h-4"/></Button>
+            <Button variant="ghost" size="sm" type="button" onClick={e => handleVote(e, 'like')} className={cn(optimisticVote === 'like' && 'text-emerald-400')}><ThumbsUp className="w-4 h-4"/></Button>
             <span className={cn("text-sm font-medium w-8 text-center", optimisticScore > 0 ? "text-emerald-400" : optimisticScore < 0 ? "text-red-500" : "text-zinc-500")}>{optimisticScore}</span>
-            <Button variant="ghost" size="sm" onClick={e => handleVote(e, 'dislike')} className={cn(optimisticVote === 'dislike' && 'text-red-500')}><ThumbsDown className="w-4 h-4"/></Button>
+            <Button variant="ghost" size="sm" type="button" onClick={e => handleVote(e, 'dislike')} className={cn(optimisticVote === 'dislike' && 'text-red-500')}><ThumbsDown className="w-4 h-4"/></Button>
           </div>
           <div className="flex items-center gap-4 text-xs text-zinc-500">
-            <span className="flex gap-1"><User className="w-3 h-3"/>{complaint.profiles?.full_name}</span>
-            <span className="flex gap-1"><Clock className="w-3 h-3"/>{new Date(complaint.created_at).toLocaleDateString()}</span>
-            {isEditable && <Button variant="ghost" size="sm" onClick={() => setIsEditOpen(true)}><Pencil className="w-3 h-3 mr-1"/> Edit</Button>}
+            <span className="flex gap-1"><User className="w-3 h-3"/>{complaint.profiles?.full_name || 'Unknown'}</span>
+            <span className="flex gap-1">
+              <Clock className="w-3 h-3"/>
+              {formatDate(complaint.created_at)}
+              {wasEdited && <span className="text-zinc-600 ml-1">(edited)</span>}
+            </span>
+            {isEditable && <Button variant="ghost" size="sm" type="button" onClick={() => setIsEditOpen(true)}><Pencil className="w-3 h-3 mr-1"/> Edit</Button>}
           </div>
         </div>
         {isAdmin && complaint.status !== 'Resolved' && <AdminActions complaint={complaint} onStatusChange={onStatusChange} />}

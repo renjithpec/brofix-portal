@@ -22,6 +22,7 @@ type Complaint = {
   review_comment: string | null;
   admin_remark: string | null;
   created_at: string;
+  updated_at: string;
   profiles: {
     full_name: string;
   } | null;
@@ -39,6 +40,7 @@ const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const { user, profile } = useAuth();
   const location = useLocation();
   const isAdmin = profile?.role === 'admin';
@@ -98,10 +100,19 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (location.state?.scrollTo) {
+      const complaintId = location.state.scrollTo;
+      setHighlightedId(complaintId);
+      
       setTimeout(() => {
-        const element = document.getElementById(`complaint-${location.state.scrollTo}`);
+        const element = document.getElementById(`complaint-${complaintId}`);
         element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 100);
+      
+      // Clear highlight after 3 seconds
+      setTimeout(() => setHighlightedId(null), 3000);
+      
+      // Clear the state to prevent re-highlighting on subsequent renders
+      window.history.replaceState({}, document.title);
     }
   }, [location.state]);
 
@@ -155,6 +166,7 @@ const Dashboard = () => {
               userVote={getUserVote(complaint.id)}
               onVoteChange={fetchVotes}
               onStatusChange={fetchComplaints}
+              isHighlighted={highlightedId === complaint.id}
             />
           ))}
         </div>
