@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Loader2, Play, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,7 +21,7 @@ interface AdminActionsProps {
     title: string;
     status: Status;
   };
-  onStatusChange?: (newStatus: Status) => void; // Updated signature
+  onStatusChange?: (newStatus: Status) => void;
 }
 
 const AdminActions = ({ complaint, onStatusChange }: AdminActionsProps) => {
@@ -38,10 +38,12 @@ const AdminActions = ({ complaint, onStatusChange }: AdminActionsProps) => {
       updateData.admin_remark = adminRemark;
     }
 
-    const { error } = await supabase
+    // We use .select() to verify the row was actually updated in the DB
+    const { data, error } = await supabase
       .from('complaints')
       .update(updateData)
-      .eq('id', complaint.id);
+      .eq('id', complaint.id)
+      .select();
 
     if (error) {
       toast({
@@ -49,10 +51,18 @@ const AdminActions = ({ complaint, onStatusChange }: AdminActionsProps) => {
         description: 'Failed to update status',
         variant: 'destructive'
       });
+    } else if (!data || data.length === 0) {
+      // This catches the RLS permission error specifically
+      toast({
+        title: 'Permission Denied',
+        description: 'Database update failed. Please check your Admin role in the profiles table.',
+        variant: 'destructive'
+      });
     } else {
-      // Create notification for user
+      // Only runs if DB update was successful
       const statusMsg = newStatus === 'In_Progress' ? 'In Progress' : 'Resolved';
       
+      // Notify the user
       await supabase.from('notifications').insert({
         user_id: complaint.user_id,
         type: 'status_change',
@@ -65,7 +75,7 @@ const AdminActions = ({ complaint, onStatusChange }: AdminActionsProps) => {
         description: `Complaint marked as ${statusMsg}`
       });
       
-      // Update parent instantly with new status
+      // Tell parent component to update the UI
       onStatusChange?.(newStatus);
     }
 
